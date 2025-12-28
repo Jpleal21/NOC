@@ -1,0 +1,199 @@
+#cloud-config
+# FlaggerLink Server Provisioning
+# This cloud-init script prepares a fresh Ubuntu 22.04 server for FlaggerLink deployment
+# It installs all dependencies and configures the environment
+
+package_update: true
+package_upgrade: true
+
+packages:
+  # .NET 8.0 dependencies
+  - apt-transport-https
+  - ca-certificates
+  - wget
+
+  # Web server
+  - nginx
+
+  # Redis
+  - redis-server
+
+  # Utilities
+  - curl
+  - git
+  - jq
+
+# Create flaggerlink user and directories
+users:
+  - name: flaggerlink
+    groups: sudo
+    shell: /bin/bash
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+
+runcmd:
+  # ========================================================================
+  # Install .NET 8.0 Runtime
+  # ========================================================================
+  - echo "Installing .NET 8.0 runtime..."
+  - wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
+  - dpkg -i packages-microsoft-prod.deb
+  - rm packages-microsoft-prod.deb
+  - apt-get update
+  - apt-get install -y aspnetcore-runtime-8.0
+
+  # ========================================================================
+  # Configure Redis
+  # ========================================================================
+  - echo "Configuring Redis..."
+  - REDIS_PASS="${REDIS_PASSWORD:-changeme}"
+  - sed -i "s/^# requirepass .*/requirepass $REDIS_PASS/" /etc/redis/redis.conf
+  - sed -i 's/^bind .*/bind 127.0.0.1/' /etc/redis/redis.conf
+  - systemctl enable redis-server
+  - systemctl restart redis-server
+  - echo "✓ Redis configured with password from environment"
+
+  # ========================================================================
+  # Install and Configure RabbitMQ
+  # ========================================================================
+  - echo "Installing RabbitMQ..."
+  - curl -1sLf 'https://dl.cloudsmith.io/public/rabbitmq/rabbitmq-erlang/setup.deb.sh' | sudo -E bash
+  - curl -1sLf 'https://dl.cloudsmith.io/public/rabbitmq/rabbitmq-server/setup.deb.sh' | sudo -E bash
+  - apt-get install -y rabbitmq-server
+  - systemctl enable rabbitmq-server
+  - systemctl start rabbitmq-server
+  - sleep 10
+  - RABBITMQ_USER="${RABBITMQ_USER:-flagger}"
+  - RABBITMQ_PASS="${RABBITMQ_PASSWORD:-changeme}"
+  - rabbitmqctl add_user "$RABBITMQ_USER" "$RABBITMQ_PASS" || true
+  - rabbitmqctl set_user_tags "$RABBITMQ_USER" administrator
+  - rabbitmqctl set_permissions -p / "$RABBITMQ_USER" ".*" ".*" ".*"
+  - rabbitmq-plugins enable rabbitmq_management
+  - echo "✓ RabbitMQ configured with credentials from environment"
+
+  # ========================================================================
+  # Create Directory Structure
+  # ========================================================================
+  - echo "Creating directory structure..."
+  - mkdir -p /opt/flaggerlink/{api,texting,portal-api,scripts,secrets}
+  - mkdir -p /var/www/flaggerlink/{web,portal}
+  - mkdir -p /var/log/flaggerlink
+
+  # ========================================================================
+  # Save Secrets to Secure Location
+  # ========================================================================
+  - echo "Saving secrets configuration..."
+  - |
+    cat > /opt/flaggerlink/secrets/.env << EOF
+    # FlaggerLink Environment Secrets
+    # Generated: $(date -u)
+    # DO NOT COMMIT THIS FILE
+
+    # Infrastructure
+    REDIS_PASSWORD=${REDIS_PASSWORD:-changeme}
+    RABBITMQ_USER=${RABBITMQ_USER:-flagger}
+    RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-changeme}
+
+    # Database (to be configured by deployment)
+    DATABASE_USER=${DATABASE_USER:-flagger}
+    DATABASE_PASSWORD=${DATABASE_PASSWORD:-changeme}
+
+    # Application Secrets
+    JWT_SECRET=${JWT_SECRET:-changeme}
+    ENCRYPTION_KEY=${ENCRYPTION_KEY:-changeme}
+    EOF
+  - chmod 600 /opt/flaggerlink/secrets/.env
+  - echo "✓ Secrets saved to /opt/flaggerlink/secrets/.env"
+
+  # ========================================================================
+  # Set Ownership
+  # ========================================================================
+  - chown -R flaggerlink:flaggerlink /opt/flaggerlink
+  - chown -R flaggerlink:flaggerlink /var/log/flaggerlink
+  - chown -R www-data:www-data /var/www/flaggerlink
+
+  # ========================================================================
+  # Configure Firewall (UFW)
+  # ========================================================================
+  - echo "Configuring firewall..."
+  - ufw --force enable
+  - ufw allow 22/tcp    # SSH
+  - ufw allow 80/tcp    # HTTP
+  - ufw allow 443/tcp   # HTTPS
+
+  # ========================================================================
+  # Configure Nginx
+  # ========================================================================
+  - echo "Configuring nginx..."
+  - rm -f /etc/nginx/sites-enabled/default
+  - systemctl enable nginx
+  - systemctl restart nginx
+
+  # ========================================================================
+  # System Optimizations
+  # ========================================================================
+  - echo "Applying system optimizations..."
+  - sysctl -w net.core.somaxconn=1024
+  - sysctl -w vm.overcommit_memory=1
+  - echo "net.core.somaxconn=1024" >> /etc/sysctl.conf
+  - echo "vm.overcommit_memory=1" >> /etc/sysctl.conf
+
+write_files:
+  # Create a marker file to indicate provisioning is complete
+  - path: /opt/flaggerlink/.provisioned
+    content: |
+      Provisioned at: $(date)
+      Cloud-init version: 1.0
+    permissions: '0644'
+    owner: flaggerlink:flaggerlink
+
+  # Create initial nginx default configuration
+  - path: /etc/nginx/sites-available/default
+    content: |
+      server {
+          listen 80 default_server;
+          listen [::]:80 default_server;
+
+          server_name _;
+
+          root /var/www/html;
+          index index.html;
+
+          location / {
+              return 200 'FlaggerLink server is ready for deployment';
+              add_header Content-Type text/plain;
+          }
+
+          location /health {
+              return 200 'OK';
+              add_header Content-Type text/plain;
+          }
+      }
+    permissions: '0644'
+
+final_message: |
+  =======================================
+  FlaggerLink Server Provisioning Complete
+  =======================================
+
+  Installed:
+    - .NET 8.0 Runtime
+    - Nginx
+    - Redis (with password configured)
+    - RabbitMQ (user: flagger)
+
+  Directories:
+    - /opt/flaggerlink/     (API services)
+    - /var/www/flaggerlink/ (Frontend apps)
+
+  Services Running:
+    - nginx
+    - redis-server
+    - rabbitmq-server
+
+  Next Steps:
+    - Deploy systemd service files
+    - Deploy application code
+    - Configure nginx reverse proxy
+    - Deploy SSL certificates
+
+  =======================================

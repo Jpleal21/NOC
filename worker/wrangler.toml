@@ -1,0 +1,18 @@
+name = "noc-worker"
+main = "src/index.ts"
+compatibility_date = "2024-12-27"
+compatibility_flags = ["nodejs_compat"]
+
+# Environment configuration
+[env.production]
+name = "noc-worker"
+route = { pattern = "noc-api.flaggerlink.com/*", zone_name = "flaggerlink.com" }
+
+# Secrets (configure in Cloudflare dashboard)
+# INFISICAL_CLIENT_ID
+# INFISICAL_CLIENT_SECRET
+# INFISICAL_PROJECT_ID
+# DIGITALOCEAN_TOKEN
+# CLOUDFLARE_API_TOKEN
+# CLOUDFLARE_ZONE_ID
+# GITHUB_DEPLOY_KEY_PRIVATE

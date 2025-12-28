@@ -1,0 +1,22 @@
+{
+  "name": "noc-worker",
+  "version": "1.0.0",
+  "description": "NOC Platform - Cloudflare Worker API",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "keywords": ["cloudflare", "worker", "infrastructure", "deployment"],
+  "author": "FlaggerLink",
+  "license": "ISC",
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "typescript": "^5.3.3",
+    "wrangler": "^3.94.0"
+  },
+  "dependencies": {
+    "hono": "^4.0.0"
+  }
+}
