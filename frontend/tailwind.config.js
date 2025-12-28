@@ -29,6 +29,13 @@ export default {
           selected: '#555',
           highlight: '#ff6700',
         },
+        // Schedule colors
+        schedule: {
+          confirmed: '#4CAF50',
+          timeOff: '#cc0d0d',
+          unscheduled: '#999',
+          unconfirmed: '#ff6700',
+        },
         // General UI colors
         ui: {
           lightest: '#fff',
@@ -68,6 +75,14 @@ export default {
       // Add custom hover states for text colors
       textColor: {
         highlight: '#ff6700',
+      },
+      // Add custom hover variants
+      hover: {
+        textHighlight: {
+          'hover:text-highlight': {
+            color: '#ff6700',
+          },
+        },
       },
     },
   },

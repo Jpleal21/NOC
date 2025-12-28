@@ -1,52 +1,44 @@
 # Dependencies
 node_modules/
-.pnp
-.pnp.js
-
-# Build outputs
-dist/
-dist-ssr/
-*.local
-
-# Environment files (secrets)
-.env
-.env.*
-!.env.example
-.wrangler/
-.dev.vars
-
-# Logs
-logs/
-*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-lerna-debug.log*
 
-# Editor directories
-.vscode/*
-!.vscode/extensions.json
+# Build outputs
+dist/
+build/
+.output/
+.vercel/
+.wrangler/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+.dev.vars
+
+# IDE
+.vscode/
 .idea/
+*.swp
+*.swo
+*~
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
 
-# OS files
-.DS_Store
+# Logs
+logs/
+*.log
+
+# OS
 Thumbs.db
 
-# Testing
-coverage/
+# Secrets (IMPORTANT: Never commit secrets!)
+/shared/templates/.env
+*.key
+*.pem
+id_rsa*
 
 # Cloudflare
 .wrangler/
-wrangler.toml.bak
-
-# Temporary files
-*.tmp
-*.temp
-.cache/
+wrangler.toml.local

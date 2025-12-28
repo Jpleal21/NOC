@@ -1,153 +1,139 @@
 # NOC Platform
 
-Custom IaaS platform for rapid FlaggerLink production server deployment using Cloudflare Workers + Pages.
+FlaggerLink Network Operations Center - Self-service infrastructure deployment platform.
 
 ## Overview
 
-NOC (Network Operations Center) automates the provisioning and management of FlaggerLink production servers on DigitalOcean infrastructure with automatic deployment via cloud-init.
+NOC Platform enables automated deployment of FlaggerLink production servers on DigitalOcean using Cloudflare Workers + Pages architecture.
 
-### Features
+**Architecture:**
+- **Worker API** (`/worker`): Hono.js backend handling deployments, DNS, VPC management
+- **Pages Frontend** (`/frontend`): Vue 3 + Vite UI for server management
+- **Authentication**: Cloudflare Access with Azure AD SSO
 
-- **Automated Server Deployment**: Deploy DigitalOcean droplets with one click
-- **DNS Management**: Automatically create 3 DNS records per server (base, api, text-api)
-- **VPC Integration**: Join droplets to region-specific VPCs
-- **Real-time Progress**: Live deployment updates via Server-Sent Events
-- **Auto-Deployment**: Cloud-init automatically clones and deploys FlaggerLink code
-- **Secure Authentication**: Cloudflare Access with Azure AD SSO
+## Features
 
-## Architecture
+- Deploy DigitalOcean droplets with one click
+- Automatic DNS configuration (3 records per server)
+- VPC integration (region-aware)
+- Cloud-init auto-provisioning
+- Real-time deployment progress (SSE)
+- Server lifecycle management
 
-```
-User (Azure AD) → Cloudflare Access → Pages UI → Worker API
-                                                      ↓
-                    ┌─────────────────┬───────────────┼────────────────┐
-                    ↓                 ↓               ↓                ↓
-                Infisical        DO Droplets     DO Database    Cloudflare DNS
-              (FL secrets)    (create+VPC)      (whitelist IP)   (A records)
-```
+## Tech Stack
+
+**Backend:**
+- Cloudflare Workers
+- Hono.js web framework
+- TypeScript
+- Infisical (FlaggerLink app secrets)
+- Cloudflare Secret Store (NOC secrets)
+
+**Frontend:**
+- Vue 3 (Composition API)
+- Vite
+- TailwindCSS (FlaggerLink design system)
+- TypeScript
+
+**Infrastructure:**
+- DigitalOcean API (droplets, VPC, networking)
+- Cloudflare DNS API
+- Cloudflare Access (authentication)
 
 ## Project Structure
 
 ```
-NOC/
-├── worker/              # Cloudflare Worker API (Hono.js + TypeScript)
-│   ├── src/
-│   │   ├── routes/      # API endpoints
-│   │   ├── services/    # Business logic (DO, DNS, Infisical)
-│   │   ├── lib/         # Utilities (cloud-init generation)
-│   │   └── types/       # TypeScript definitions
-│   ├── package.json
-│   ├── wrangler.toml
-│   └── tsconfig.json
-├── frontend/            # Cloudflare Pages (Vue 3 + Vite)
-│   ├── src/
-│   │   ├── views/       # Page components
-│   │   ├── components/  # Reusable UI components
-│   │   ├── services/    # API client
-│   │   └── composables/ # Vue composables
-│   ├── public/
-│   ├── package.json
-│   ├── vite.config.js
-│   └── tailwind.config.js
-├── shared/              # Shared code and templates
-│   └── templates/       # Cloud-init templates
-└── docs/                # Documentation
-    └── NOC_IMPLEMENTATION_PLAN.md
+/worker              # Cloudflare Worker API
+  /src
+    /routes          # API endpoints
+    /services        # Business logic
+    /lib             # Utilities
+    /types           # TypeScript definitions
+  wrangler.toml      # Cloudflare Worker config
+
+/frontend            # Cloudflare Pages app
+  /src
+    /views           # Page components
+    /components      # Reusable components
+    /services        # API clients
+    /composables     # Vue composables
+  vite.config.js     # Vite configuration
+
+/shared              # Shared resources
+  /templates         # Cloud-init templates
+  /types             # Shared TypeScript types
+
+/docs                # Documentation
 ```
-
-## Tech Stack
-
-### Worker API
-- **Framework**: Hono.js (lightweight web framework)
-- **Runtime**: Cloudflare Workers
-- **Language**: TypeScript
-- **APIs**: DigitalOcean, Cloudflare DNS, Infisical
-
-### Frontend
-- **Framework**: Vue 3 (Composition API)
-- **Build Tool**: Vite
-- **Styling**: TailwindCSS (matching FlaggerLink CRM design)
-- **Auth**: Cloudflare Access (Azure AD)
 
 ## Development
 
-### Prerequisites
-- Node.js 18+
-- Cloudflare account
-- DigitalOcean account
-- Infisical access
+### Worker API
 
-### Local Development
-
-**Worker:**
 ```bash
 cd worker
 npm install
-npm run dev  # Runs on http://localhost:8787
+npm run dev          # Start Wrangler dev server on :8787
 ```
 
-**Frontend:**
+### Frontend
+
 ```bash
 cd frontend
 npm install
-npm run dev  # Runs on http://localhost:5173 with API proxy
+npm run dev          # Start Vite dev server on :5173
 ```
+
+Frontend proxies `/api` requests to Worker dev server (configured in `vite.config.js`).
 
 ## Deployment
 
-This project uses Cloudflare's built-in GitHub CI/CD workflow:
+Uses Cloudflare's GitHub CI/CD integration:
 
-1. **Push to GitHub**: `git push origin main`
-2. **Cloudflare Worker**: Configured in Cloudflare Dashboard → Workers & Pages
-3. **Cloudflare Pages**: Configured in Cloudflare Dashboard → Pages
-4. **Secrets**: Set environment variables in Cloudflare Dashboard
+1. Push to GitHub repository
+2. Configure Worker in Cloudflare dashboard:
+   - Connect to GitHub repo
+   - Set build command: `cd worker && npm install && npm run build`
+   - Set publish directory: `worker/dist`
+3. Configure Pages in Cloudflare dashboard:
+   - Connect to GitHub repo
+   - Set build command: `cd frontend && npm install && npm run build`
+   - Set publish directory: `frontend/dist`
+4. Configure secrets in Cloudflare Secret Store (accessed via Worker binding):
+   - `INFISICAL_CLIENT_ID`
+   - `INFISICAL_CLIENT_SECRET`
+   - `INFISICAL_PROJECT_ID`
+   - `DIGITALOCEAN_TOKEN`
+   - `CLOUDFLARE_API_TOKEN`
+   - `CLOUDFLARE_ZONE_ID`
+   - `GITHUB_DEPLOY_KEY_PRIVATE`
 
-### Required Secrets (Cloudflare Worker)
+## Secret Management
 
-Configure in Cloudflare Dashboard → Worker → Settings → Variables:
+**NOC Platform Secrets** (Cloudflare Secret Store):
+- Accessed via Worker binding configured in `wrangler.toml`
+- Stores API keys for DigitalOcean, Cloudflare, Infisical, GitHub
 
-```bash
-INFISICAL_CLIENT_ID=client-xxx
-INFISICAL_CLIENT_SECRET=secret-xxx
-INFISICAL_PROJECT_ID=64f8...
-DIGITALOCEAN_TOKEN=dop_v1_xxx
-CLOUDFLARE_API_TOKEN=cf-xxx
-CLOUDFLARE_ZONE_ID=zone-xxx
-GITHUB_DEPLOY_KEY_PRIVATE=-----BEGIN OPENSSH PRIVATE KEY-----...
-```
+**FlaggerLink Application Secrets** (Infisical):
+- Fetched from Infisical during deployment
+- Injected into cloud-init as environment variables
+- Includes: Redis password, RabbitMQ credentials, database credentials
 
-## Key Features
+## API Endpoints
 
-### Region → VPC Selection Flow
+- `GET /health` - Health check
+- `GET /api/regions` - List DigitalOcean regions
+- `GET /api/vpcs` - List VPCs (filtered by region)
+- `GET /api/servers` - List deployed servers
+- `POST /api/deploy` - Deploy new server (SSE stream)
+- `DELETE /api/servers/:name` - Destroy server
 
-Proper UX flow ensures VPC compatibility with selected region:
+## Security
 
-1. User selects region (e.g., `nyc1`)
-2. Frontend fetches all VPCs from API
-3. Worker filters VPCs by `vpc.region === selectedRegion`
-4. User selects VPC from filtered list
-5. Worker validates VPC region before deployment
-
-### Database Access
-
-Uses DigitalOcean's "DigitalOcean Resources" trusted source feature:
-
-- **One-time setup**: Add "DigitalOcean Resources" in DO Dashboard → Databases → Trusted Sources
-- **No code needed**: All droplets in account/VPC automatically trusted
-- **No manual IP whitelisting**: Database automatically allows connections from droplets
-
-### Cloud-Init Auto-Deployment
-
-Each droplet automatically:
-1. Installs .NET 8.0, Nginx, Redis, RabbitMQ
-2. Configures services with Infisical secrets
-3. Clones FlaggerLink private repo via SSH deploy key
-4. Runs deployment script
-5. Configures nginx reverse proxy
-
-## Documentation
-
-See `/docs/NOC_IMPLEMENTATION_PLAN.md` for detailed implementation plan and architecture.
+- **Authentication**: Cloudflare Access with Azure AD
+- **Secrets**: Cloudflare Secret Store (NOC), Infisical (FlaggerLink app secrets)
+- **Network**: VPC isolation, firewall rules
+- **Database**: DigitalOcean Resources trusted source
 
 ## License
 
