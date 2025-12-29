@@ -40,6 +40,49 @@
           @deployApplication="handleDeployApplication"
         />
 
+        <!-- Delete Confirmation Modal -->
+        <div v-if="showDeleteModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div class="bg-white dark:bg-dark-card rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 class="text-lg font-semibold text-red-600 dark:text-red-400 mb-4">
+              Delete Server
+            </h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+              This will permanently destroy the droplet and remove all DNS records.
+            </p>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Type <strong class="text-gray-900 dark:text-white">{{ serverToDelete }}</strong> to confirm:
+            </p>
+
+            <input
+              v-model="deleteConfirmation"
+              type="text"
+              placeholder="Enter server name"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg mb-4
+                     bg-white dark:bg-dark-card text-gray-900 dark:text-white
+                     focus:ring-2 focus:ring-red-500"
+              @keyup.enter="confirmDelete"
+            />
+
+            <div class="flex space-x-3">
+              <button
+                @click="confirmDelete"
+                :disabled="deleteConfirmation !== serverToDelete"
+                class="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg
+                       transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Delete Server
+              </button>
+              <button
+                @click="cancelDelete"
+                class="flex-1 px-4 py-2 bg-gray-200 dark:bg-dark-hover hover:bg-gray-300 dark:hover:bg-dark-border
+                       text-gray-700 dark:text-gray-300 font-medium rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- Branch Selection Modal -->
         <div v-if="showBranchModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div class="bg-white dark:bg-dark-card rounded-lg p-6 max-w-md w-full mx-4">
@@ -103,6 +146,9 @@ const lastDeploymentData = ref(null);
 const showBranchModal = ref(false);
 const selectedServer = ref(null);
 const selectedBranch = ref('master');
+const showDeleteModal = ref(false);
+const serverToDelete = ref('');
+const deleteConfirmation = ref('');
 
 onMounted(() => {
   loadServers();
@@ -193,18 +239,35 @@ async function handleDeploy(formData) {
   }
 }
 
-async function handleDelete(serverName) {
-  if (!confirm('Are you sure you want to delete ' + serverName + '? This will destroy the droplet and remove all DNS records.')) {
+function handleDelete(serverName) {
+  serverToDelete.value = serverName;
+  deleteConfirmation.value = '';
+  showDeleteModal.value = true;
+}
+
+function cancelDelete() {
+  showDeleteModal.value = false;
+  serverToDelete.value = '';
+  deleteConfirmation.value = '';
+}
+
+async function confirmDelete() {
+  if (deleteConfirmation.value !== serverToDelete.value) {
     return;
   }
 
-  const result = await api.deleteServer(serverName);
+  showDeleteModal.value = false;
+
+  const result = await api.deleteServer(serverToDelete.value);
   if (result.success) {
     await loadServers();
     alert('Server deleted successfully');
   } else {
     alert('Failed to delete server: ' + result.error);
   }
+
+  serverToDelete.value = '';
+  deleteConfirmation.value = '';
 }
 
 async function handleDeployApplication(data) {
