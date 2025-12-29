@@ -65,13 +65,13 @@ app.get('/api/vpcs', async (c) => {
   }
 });
 
-// Get all deployed servers (filtered by noc-managed tag)
+// Get all deployed servers
 app.get('/api/servers', async (c) => {
   try {
     console.log('[NOC Worker] GET /api/servers');
     const token = await c.env.DIGITALOCEAN_TOKEN.get();
     const doService = new DigitalOceanService(token);
-    const droplets = await doService.listDroplets('noc-managed');
+    const droplets = await doService.listDroplets(); // Show all droplets
 
     console.log('[NOC Worker] Returning', droplets.length, 'servers');
     return c.json({
