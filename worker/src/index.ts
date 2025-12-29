@@ -268,6 +268,11 @@ app.post('/api/deploy', async (c) => {
             throw new Error('Droplet failed to become active');
           }
           console.log('[NOC Worker] Droplet is now active');
+
+          // Wait for pending events to clear before IP/firewall operations
+          console.log('[NOC Worker] Waiting for pending events to clear...');
+          await new Promise(resolve => setTimeout(resolve, 10000)); // 10 second delay
+          console.log('[NOC Worker] Ready for IP/firewall operations');
         }
 
         // Step 3b: Assign reserved IP (if specified)
