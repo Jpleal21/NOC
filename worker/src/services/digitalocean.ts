@@ -201,13 +201,8 @@ export class DigitalOceanService {
 
     const trustedSource: any = {
       type: dropletId ? 'droplet' : 'ip_addr',
+      value: dropletId ? dropletId.toString() : ipAddress,
     };
-
-    if (dropletId) {
-      trustedSource.uuid = dropletId.toString();
-    } else {
-      trustedSource.source = ipAddress;
-    }
 
     await this.request(`/databases/${databaseId}/firewall`, {
       method: 'PUT',
