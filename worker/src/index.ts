@@ -7,13 +7,13 @@ import { CloudflareDNSService } from './services/cloudflare-dns';
 import { renderCloudInit } from './lib/cloud-init';
 
 type Bindings = {
-  INFISICAL_CLIENT_ID: string;
-  INFISICAL_CLIENT_SECRET: string;
-  INFISICAL_PROJECT_ID: string;
-  DIGITALOCEAN_TOKEN: string;
-  CLOUDFLARE_API_TOKEN: string;
-  CLOUDFLARE_ZONE_ID: string;
-  GITHUB_TOKEN: string;
+  INFISICAL_CLIENT_ID: { get(): Promise<string> };
+  INFISICAL_CLIENT_SECRET: { get(): Promise<string> };
+  INFISICAL_PROJECT_ID: { get(): Promise<string> };
+  DIGITALOCEAN_TOKEN: { get(): Promise<string> };
+  CLOUDFLARE_API_TOKEN: { get(): Promise<string> };
+  CLOUDFLARE_ZONE_ID: { get(): Promise<string> };
+  GITHUB_TOKEN: { get(): Promise<string> };
 };
 
 const app = new Hono<{ Bindings: Bindings }>();
@@ -33,7 +33,8 @@ app.get('/health', (c) => {
 // Get all available regions
 app.get('/api/regions', async (c) => {
   try {
-    const doService = new DigitalOceanService(c.env.DIGITALOCEAN_TOKEN);
+    const token = await c.env.DIGITALOCEAN_TOKEN.get();
+    const doService = new DigitalOceanService(token);
     const regions = await doService.getRegions();
     return c.json({ success: true, regions });
   } catch (error: any) {
@@ -45,7 +46,8 @@ app.get('/api/regions', async (c) => {
 app.get('/api/vpcs', async (c) => {
   try {
     const region = c.req.query('region');
-    const doService = new DigitalOceanService(c.env.DIGITALOCEAN_TOKEN);
+    const token = await c.env.DIGITALOCEAN_TOKEN.get();
+    const doService = new DigitalOceanService(token);
 
     const vpcs = region
       ? await doService.getVPCsByRegion(region)
@@ -60,7 +62,8 @@ app.get('/api/vpcs', async (c) => {
 // Get all deployed servers (filtered by noc-managed tag)
 app.get('/api/servers', async (c) => {
   try {
-    const doService = new DigitalOceanService(c.env.DIGITALOCEAN_TOKEN);
+    const token = await c.env.DIGITALOCEAN_TOKEN.get();
+    const doService = new DigitalOceanService(token);
     const droplets = await doService.listDroplets('noc-managed');
 
     return c.json({
@@ -91,12 +94,23 @@ app.post('/api/deploy', async (c) => {
       return c.json({ success: false, error: 'Missing required fields' }, 400);
     }
 
+    // Get all secrets
+    const [doToken, cfToken, cfZoneId, githubToken, infisicalClientId, infisicalClientSecret, infisicalProjectId] = await Promise.all([
+      c.env.DIGITALOCEAN_TOKEN.get(),
+      c.env.CLOUDFLARE_API_TOKEN.get(),
+      c.env.CLOUDFLARE_ZONE_ID.get(),
+      c.env.GITHUB_TOKEN.get(),
+      c.env.INFISICAL_CLIENT_ID.get(),
+      c.env.INFISICAL_CLIENT_SECRET.get(),
+      c.env.INFISICAL_PROJECT_ID.get(),
+    ]);
+
     // Initialize services
-    const doService = new DigitalOceanService(c.env.DIGITALOCEAN_TOKEN);
-    const dnsService = new CloudflareDNSService(c.env.CLOUDFLARE_API_TOKEN, c.env.CLOUDFLARE_ZONE_ID);
+    const doService = new DigitalOceanService(doToken);
+    const dnsService = new CloudflareDNSService(cfToken, cfZoneId);
     const infisicalService = new InfisicalService(
-      { clientId: c.env.INFISICAL_CLIENT_ID, clientSecret: c.env.INFISICAL_CLIENT_SECRET },
-      c.env.INFISICAL_PROJECT_ID
+      { clientId: infisicalClientId, clientSecret: infisicalClientSecret },
+      infisicalProjectId
     );
 
     // Stream deployment progress
@@ -108,7 +122,7 @@ app.post('/api/deploy', async (c) => {
 
         // Step 2: Render cloud-init template
         await stream.write('data: ' + JSON.stringify({ step: 'template', message: 'Rendering cloud-init template...' }) + '\n\n');
-        const cloudInit = await renderCloudInit({ secrets, githubToken: c.env.GITHUB_TOKEN, branch });
+        const cloudInit = await renderCloudInit({ secrets, githubToken, branch });
 
         // Step 3: Create droplet
         await stream.write('data: ' + JSON.stringify({ step: 'droplet', message: 'Creating DigitalOcean droplet...' }) + '\n\n');
@@ -164,8 +178,14 @@ app.delete('/api/servers/:name', async (c) => {
   try {
     const serverName = c.req.param('name');
 
-    const doService = new DigitalOceanService(c.env.DIGITALOCEAN_TOKEN);
-    const dnsService = new CloudflareDNSService(c.env.CLOUDFLARE_API_TOKEN, c.env.CLOUDFLARE_ZONE_ID);
+    const [doToken, cfToken, cfZoneId] = await Promise.all([
+      c.env.DIGITALOCEAN_TOKEN.get(),
+      c.env.CLOUDFLARE_API_TOKEN.get(),
+      c.env.CLOUDFLARE_ZONE_ID.get(),
+    ]);
+
+    const doService = new DigitalOceanService(doToken);
+    const dnsService = new CloudflareDNSService(cfToken, cfZoneId);
 
     // Find droplet by name
     const droplets = await doService.listDroplets('noc-managed');
