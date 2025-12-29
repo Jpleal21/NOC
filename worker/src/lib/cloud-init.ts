@@ -96,6 +96,7 @@ runcmd:
   - chmod 600 /opt/flaggerlink/secrets/.env
 
   # Set Ownership
+  - chown flaggerlink:flaggerlink /opt/flaggerlink/.provisioned
   - chown -R flaggerlink:flaggerlink /opt/flaggerlink
   - chown -R flaggerlink:flaggerlink /var/log/flaggerlink
   - chown -R www-data:www-data /var/www/flaggerlink
@@ -124,7 +125,6 @@ write_files:
       Branch: ${branch}
       NOC Platform: Automated Deployment
     permissions: '0644'
-    owner: flaggerlink:flaggerlink
 
   - path: /etc/nginx/sites-available/default
     content: |
