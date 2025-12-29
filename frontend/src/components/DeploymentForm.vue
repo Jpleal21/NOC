@@ -99,17 +99,115 @@
         </select>
       </div>
 
-      <!-- Cloudflare Proxy -->
-      <div class="flex items-center">
-        <input
-          v-model="form.enable_cloudflare_proxy"
-          type="checkbox"
-          id="proxy"
-          class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-        />
-        <label for="proxy" class="ml-2 block text-sm text-gray-700 dark:text-gray-300">
-          Enable Cloudflare Proxy (main domain only)
+      <!-- Reserved IP -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Reserved IP (optional)
         </label>
+        <select
+          v-model="form.reserved_ip"
+          class="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg
+                 bg-white dark:bg-dark-card text-gray-900 dark:text-white
+                 focus:ring-2 focus:ring-primary-500"
+        >
+          <option value="">Use ephemeral IP</option>
+          <option v-for="ip in reservedIPs" :key="ip.ip" :value="ip.ip">
+            {{ ip.ip }} ({{ ip.region.name }})
+          </option>
+        </select>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          Reserved IPs persist when droplet is destroyed
+        </p>
+      </div>
+
+      <!-- SSH Keys -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          SSH Keys
+        </label>
+        <div class="space-y-2 max-h-40 overflow-y-auto border border-gray-300 dark:border-dark-border rounded-lg p-2">
+          <label v-for="key in sshKeys" :key="key.id" class="flex items-center">
+            <input
+              type="checkbox"
+              :value="key.id"
+              v-model="form.ssh_keys"
+              class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+            />
+            <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+              {{ key.name }}
+            </span>
+          </label>
+        </div>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          {{ form.ssh_keys.length }} key(s) selected
+        </p>
+      </div>
+
+      <!-- Firewall -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Firewall (optional)
+        </label>
+        <select
+          v-model="form.firewall_id"
+          class="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg
+                 bg-white dark:bg-dark-card text-gray-900 dark:text-white
+                 focus:ring-2 focus:ring-primary-500"
+        >
+          <option value="">No firewall</option>
+          <option v-for="fw in firewalls" :key="fw.id" :value="fw.id">
+            {{ fw.name }}
+          </option>
+        </select>
+      </div>
+
+      <!-- Database Cluster -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Database Cluster
+        </label>
+        <select
+          v-model="form.database_id"
+          required
+          class="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg
+                 bg-white dark:bg-dark-card text-gray-900 dark:text-white
+                 focus:ring-2 focus:ring-primary-500"
+        >
+          <option value="">Select database...</option>
+          <option v-for="db in databases" :key="db.id" :value="db.id">
+            {{ db.name }} ({{ db.engine }} {{ db.version }})
+          </option>
+        </select>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          Server will be added to database trusted sources
+        </p>
+      </div>
+
+      <!-- Options -->
+      <div class="space-y-2">
+        <div class="flex items-center">
+          <input
+            v-model="form.enable_backups"
+            type="checkbox"
+            id="backups"
+            class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+          />
+          <label for="backups" class="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+            Enable backups (+20% cost)
+          </label>
+        </div>
+
+        <div class="flex items-center">
+          <input
+            v-model="form.enable_cloudflare_proxy"
+            type="checkbox"
+            id="proxy"
+            class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+          />
+          <label for="proxy" class="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+            Enable Cloudflare Proxy (main domain only)
+          </label>
+        </div>
       </div>
 
       <!-- Submit Button -->
@@ -133,6 +231,10 @@ const emit = defineEmits(['deploy']);
 
 const regions = ref([]);
 const vpcs = ref([]);
+const reservedIPs = ref([]);
+const sshKeys = ref([]);
+const firewalls = ref([]);
+const databases = ref([]);
 const loadingVPCs = ref(false);
 const deploying = ref(false);
 
@@ -142,14 +244,29 @@ const form = reactive({
   vpc_uuid: '',
   droplet_size: 's-2vcpu-4gb',
   branch: 'master',
+  reserved_ip: '',
+  ssh_keys: [],
+  firewall_id: '',
+  database_id: '',
+  enable_backups: false,
   enable_cloudflare_proxy: false,
 });
 
 onMounted(async () => {
-  const result = await api.getRegions();
-  if (result.success) {
-    regions.value = result.regions;
-  }
+  // Load all resources in parallel
+  const [regionsResult, ipsResult, keysResult, firewallsResult, databasesResult] = await Promise.all([
+    api.getRegions(),
+    api.getReservedIPs(),
+    api.getSSHKeys(),
+    api.getFirewalls(),
+    api.getDatabases(),
+  ]);
+
+  if (regionsResult.success) regions.value = regionsResult.regions;
+  if (ipsResult.success) reservedIPs.value = ipsResult.reserved_ips;
+  if (keysResult.success) sshKeys.value = keysResult.ssh_keys;
+  if (firewallsResult.success) firewalls.value = firewallsResult.firewalls;
+  if (databasesResult.success) databases.value = databasesResult.databases;
 });
 
 async function loadVPCs() {
@@ -176,6 +293,11 @@ defineExpose({
     deploying.value = false;
     form.server_name = '';
     form.vpc_uuid = '';
+    form.reserved_ip = '';
+    form.ssh_keys = [];
+    form.firewall_id = '';
+    form.database_id = '';
+    form.enable_backups = false;
   }
 });
 </script>

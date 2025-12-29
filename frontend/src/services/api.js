@@ -47,6 +47,26 @@ class ApiClient {
     return this.delete(`/api/servers/${name}`);
   }
 
+  // Get available reserved IPs
+  async getReservedIPs() {
+    return this.get('/api/reserved-ips');
+  }
+
+  // Get SSH keys
+  async getSSHKeys() {
+    return this.get('/api/ssh-keys');
+  }
+
+  // Get firewalls
+  async getFirewalls() {
+    return this.get('/api/firewalls');
+  }
+
+  // Get database clusters
+  async getDatabases() {
+    return this.get('/api/databases');
+  }
+
   // Deploy new server (returns EventSource for SSE)
   deployServer(data) {
     return fetch(`${API_BASE_URL}/api/deploy`, {

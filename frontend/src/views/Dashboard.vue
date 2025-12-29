@@ -98,9 +98,18 @@ async function handleDeploy(formData) {
           } else if (data.step === 'droplet') {
             progress.value.updateLastStep('complete');
             progress.value.addStep('Creating DigitalOcean droplet', 'loading');
+          } else if (data.step === 'reserved_ip') {
+            progress.value.updateLastStep('complete');
+            progress.value.addStep('Assigning reserved IP address', 'loading');
+          } else if (data.step === 'firewall') {
+            progress.value.updateLastStep('complete');
+            progress.value.addStep('Adding droplet to firewall', 'loading');
           } else if (data.step === 'ip') {
             progress.value.updateLastStep('complete');
             progress.value.addStep('Waiting for IP address assignment', 'loading');
+          } else if (data.step === 'database') {
+            progress.value.updateLastStep('complete');
+            progress.value.addStep('Adding to database cluster trusted sources', 'loading');
           } else if (data.step === 'dns') {
             progress.value.updateLastStep('complete');
             progress.value.addStep('Creating DNS records', 'loading');
