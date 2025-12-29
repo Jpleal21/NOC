@@ -9,6 +9,10 @@ interface DropletCreateParams {
   vpc_uuid: string;
   user_data: string;
   tags?: string[];
+  ssh_keys?: string[];
+  backups?: boolean;
+  ipv6?: boolean;
+  monitoring?: boolean;
 }
 
 export class DigitalOceanService {
@@ -72,6 +76,9 @@ export class DigitalOceanService {
     console.log('[DigitalOcean] Creating droplet:', params.name);
     console.log('[DigitalOcean] Region:', params.region, 'Size:', params.size);
     console.log('[DigitalOcean] VPC UUID:', params.vpc_uuid);
+    console.log('[DigitalOcean] SSH Keys:', params.ssh_keys?.length || 0);
+    console.log('[DigitalOcean] Backups:', params.backups || false);
+    console.log('[DigitalOcean] Monitoring:', params.monitoring !== false);
 
     const response = await this.request<{ droplet: any }>('/droplets', {
       method: 'POST',
@@ -82,9 +89,11 @@ export class DigitalOceanService {
         image: params.image,
         vpc_uuid: params.vpc_uuid,
         user_data: params.user_data,
+        ssh_keys: params.ssh_keys || [],
         tags: params.tags || ['noc-managed', 'flaggerlink'],
-        monitoring: true,
-        ipv6: false,
+        backups: params.backups || false,
+        ipv6: params.ipv6 || false,
+        monitoring: params.monitoring !== false, // Default to true
       }),
     });
 
@@ -115,5 +124,93 @@ export class DigitalOceanService {
   async getDropletActions(id: number) {
     const response = await this.request<{ actions: any[] }>(`/droplets/${id}/actions`);
     return response.actions;
+  }
+
+  // ===== Reserved IPs (Floating IPs) =====
+
+  // List all reserved IPs
+  async listReservedIPs() {
+    const response = await this.request<{ reserved_ips: any[] }>('/reserved_ips');
+    return response.reserved_ips;
+  }
+
+  // Get available (unassigned) reserved IPs
+  async getAvailableReservedIPs() {
+    const ips = await this.listReservedIPs();
+    return ips.filter((ip: any) => !ip.droplet);
+  }
+
+  // Assign reserved IP to droplet
+  async assignReservedIP(ipAddress: string, dropletId: number) {
+    console.log('[DigitalOcean] Assigning reserved IP', ipAddress, 'to droplet', dropletId);
+    const response = await this.request<{ action: any }>(`/reserved_ips/${ipAddress}/actions`, {
+      method: 'POST',
+      body: JSON.stringify({
+        type: 'assign',
+        droplet_id: dropletId,
+      }),
+    });
+    return response.action;
+  }
+
+  // ===== SSH Keys =====
+
+  // List all SSH keys
+  async listSSHKeys() {
+    const response = await this.request<{ ssh_keys: any[] }>('/account/keys');
+    return response.ssh_keys;
+  }
+
+  // ===== Firewalls =====
+
+  // List all firewalls
+  async listFirewalls() {
+    const response = await this.request<{ firewalls: any[] }>('/firewalls');
+    return response.firewalls;
+  }
+
+  // Add droplet to firewall
+  async addDropletToFirewall(firewallId: string, dropletId: number) {
+    console.log('[DigitalOcean] Adding droplet', dropletId, 'to firewall', firewallId);
+    await this.request(`/firewalls/${firewallId}/droplets`, {
+      method: 'POST',
+      body: JSON.stringify({
+        droplet_ids: [dropletId],
+      }),
+    });
+    return { success: true };
+  }
+
+  // ===== Database Clusters =====
+
+  // List all database clusters
+  async listDatabases() {
+    const response = await this.request<{ databases: any[] }>('/databases');
+    return response.databases;
+  }
+
+  // Add trusted source to database cluster
+  async addDatabaseTrustedSource(databaseId: string, ipAddress: string, dropletId?: number) {
+    console.log('[DigitalOcean] Adding trusted source to database', databaseId);
+    console.log('[DigitalOcean] IP:', ipAddress, 'Droplet ID:', dropletId);
+
+    const trustedSource: any = {
+      type: dropletId ? 'droplet' : 'ip_addr',
+    };
+
+    if (dropletId) {
+      trustedSource.uuid = dropletId.toString();
+    } else {
+      trustedSource.source = ipAddress;
+    }
+
+    await this.request(`/databases/${databaseId}/firewall`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        rules: [trustedSource],
+      }),
+    });
+
+    return { success: true };
   }
 }

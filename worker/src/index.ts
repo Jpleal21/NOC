@@ -92,12 +92,84 @@ app.get('/api/servers', async (c) => {
   }
 });
 
+// Get available reserved IPs
+app.get('/api/reserved-ips', async (c) => {
+  try {
+    console.log('[NOC Worker] GET /api/reserved-ips');
+    const token = await c.env.DIGITALOCEAN_TOKEN.get();
+    const doService = new DigitalOceanService(token);
+    const ips = await doService.getAvailableReservedIPs();
+    console.log('[NOC Worker] Returning', ips.length, 'available reserved IPs');
+    return c.json({ success: true, reserved_ips: ips });
+  } catch (error: any) {
+    console.error('[NOC Worker] Error fetching reserved IPs:', error);
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
+// Get SSH keys
+app.get('/api/ssh-keys', async (c) => {
+  try {
+    console.log('[NOC Worker] GET /api/ssh-keys');
+    const token = await c.env.DIGITALOCEAN_TOKEN.get();
+    const doService = new DigitalOceanService(token);
+    const keys = await doService.listSSHKeys();
+    console.log('[NOC Worker] Returning', keys.length, 'SSH keys');
+    return c.json({ success: true, ssh_keys: keys });
+  } catch (error: any) {
+    console.error('[NOC Worker] Error fetching SSH keys:', error);
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
+// Get firewalls
+app.get('/api/firewalls', async (c) => {
+  try {
+    console.log('[NOC Worker] GET /api/firewalls');
+    const token = await c.env.DIGITALOCEAN_TOKEN.get();
+    const doService = new DigitalOceanService(token);
+    const firewalls = await doService.listFirewalls();
+    console.log('[NOC Worker] Returning', firewalls.length, 'firewalls');
+    return c.json({ success: true, firewalls });
+  } catch (error: any) {
+    console.error('[NOC Worker] Error fetching firewalls:', error);
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
+// Get database clusters
+app.get('/api/databases', async (c) => {
+  try {
+    console.log('[NOC Worker] GET /api/databases');
+    const token = await c.env.DIGITALOCEAN_TOKEN.get();
+    const doService = new DigitalOceanService(token);
+    const databases = await doService.listDatabases();
+    console.log('[NOC Worker] Returning', databases.length, 'database clusters');
+    return c.json({ success: true, databases });
+  } catch (error: any) {
+    console.error('[NOC Worker] Error fetching databases:', error);
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
 // Deploy new server (Server-Sent Events stream)
 app.post('/api/deploy', async (c) => {
   try {
     console.log('[NOC Worker] POST /api/deploy');
     const body = await c.req.json();
-    const { server_name, droplet_size, droplet_region, vpc_uuid, branch, enable_cloudflare_proxy } = body;
+    const {
+      server_name,
+      droplet_size,
+      droplet_region,
+      vpc_uuid,
+      branch,
+      enable_cloudflare_proxy,
+      reserved_ip,
+      ssh_keys,
+      firewall_id,
+      database_id,
+      enable_backups
+    } = body;
 
     console.log('[NOC Worker] Deployment request:', {
       server_name,
@@ -105,7 +177,12 @@ app.post('/api/deploy', async (c) => {
       droplet_region,
       vpc_uuid,
       branch,
-      enable_cloudflare_proxy
+      enable_cloudflare_proxy,
+      reserved_ip,
+      ssh_keys: ssh_keys?.length || 0,
+      firewall_id,
+      database_id,
+      enable_backups
     });
 
     // Validation
@@ -163,9 +240,27 @@ app.post('/api/deploy', async (c) => {
           image: 'ubuntu-22-04-x64',
           vpc_uuid,
           user_data: cloudInit,
+          ssh_keys: ssh_keys || [],
+          backups: enable_backups || false,
           tags: ['noc-managed', 'flaggerlink'],
         });
         console.log('[NOC Worker] Droplet created, ID:', droplet.id);
+
+        // Step 3a: Assign reserved IP (if specified)
+        if (reserved_ip) {
+          console.log('[NOC Worker] Step 3a: Assign reserved IP');
+          await stream.write('data: ' + JSON.stringify({ step: 'reserved_ip', message: 'Assigning reserved IP...' }) + '\n\n');
+          await doService.assignReservedIP(reserved_ip, droplet.id);
+          console.log('[NOC Worker] Reserved IP assigned:', reserved_ip);
+        }
+
+        // Step 3b: Add to firewall (if specified)
+        if (firewall_id) {
+          console.log('[NOC Worker] Step 3b: Add to firewall');
+          await stream.write('data: ' + JSON.stringify({ step: 'firewall', message: 'Adding to firewall...' }) + '\n\n');
+          await doService.addDropletToFirewall(firewall_id, droplet.id);
+          console.log('[NOC Worker] Added to firewall:', firewall_id);
+        }
 
         // Step 4: Wait for IP address
         console.log('[NOC Worker] Step 4: Wait for IP address assignment');
@@ -186,12 +281,23 @@ app.post('/api/deploy', async (c) => {
           console.error('[NOC Worker] Failed to get IP address after', attempts, 'attempts');
           throw new Error('Failed to get droplet IP address');
         }
-        console.log('[NOC Worker] IP address assigned:', ipAddress);
+
+        // Use reserved IP if specified, otherwise use droplet IP
+        const finalIP = reserved_ip || ipAddress;
+        console.log('[NOC Worker] Final IP address:', finalIP);
+
+        // Step 4a: Add to database cluster (if specified)
+        if (database_id) {
+          console.log('[NOC Worker] Step 4a: Add to database cluster');
+          await stream.write('data: ' + JSON.stringify({ step: 'database', message: 'Adding to database cluster...' }) + '\n\n');
+          await doService.addDatabaseTrustedSource(database_id, finalIP, droplet.id);
+          console.log('[NOC Worker] Added to database cluster:', database_id);
+        }
 
         // Step 5: Create DNS records
         console.log('[NOC Worker] Step 5: Create DNS records');
         await stream.write('data: ' + JSON.stringify({ step: 'dns', message: 'Creating DNS records...' }) + '\n\n');
-        await dnsService.createServerRecords(server_name, ipAddress, enable_cloudflare_proxy || false);
+        await dnsService.createServerRecords(server_name, finalIP, enable_cloudflare_proxy || false);
         console.log('[NOC Worker] DNS records created');
 
         // Step 6: Complete
@@ -200,7 +306,8 @@ app.post('/api/deploy', async (c) => {
           step: 'complete',
           message: 'Deployment complete!',
           droplet_id: droplet.id,
-          ip_address: ipAddress,
+          ip_address: finalIP,
+          reserved_ip_used: !!reserved_ip,
         }) + '\n\n');
 
       } catch (error: any) {
