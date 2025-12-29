@@ -163,6 +163,7 @@ runcmd:
   # ========================================================================
   - echo "Configuring nginx..."
   - rm -f /etc/nginx/sites-enabled/default
+  - ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
   - systemctl enable nginx
   - systemctl restart nginx
 

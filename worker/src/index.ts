@@ -242,6 +242,7 @@ app.post('/api/deploy', async (c) => {
           user_data: cloudInit,
           ssh_keys: ssh_keys || [],
           backups: enable_backups || false,
+          monitoring: true,
           tags: ['noc-managed', 'flaggerlink'],
         });
         console.log('[NOC Worker] Droplet created, ID:', droplet.id);
@@ -445,6 +446,7 @@ app.post('/api/deploy/application', async (c) => {
           'Authorization': `Bearer ${githubToken}`,
           'Accept': 'application/vnd.github+json',
           'Content-Type': 'application/json',
+          'User-Agent': 'NOC-Deployment-API',
           'X-GitHub-Api-Version': '2022-11-28',
         },
         body: JSON.stringify({
@@ -478,6 +480,7 @@ app.post('/api/deploy/application', async (c) => {
         headers: {
           'Authorization': `Bearer ${githubToken}`,
           'Accept': 'application/vnd.github+json',
+          'User-Agent': 'NOC-Deployment-API',
           'X-GitHub-Api-Version': '2022-11-28',
         },
       }
