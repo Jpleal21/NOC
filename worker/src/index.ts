@@ -280,10 +280,19 @@ app.post('/api/deploy', async (c) => {
 
         // Step 3c: Add to firewall (if specified)
         if (firewall_id) {
-          console.log('[NOC Worker] Step 3c: Add to firewall');
-          await stream.write('data: ' + JSON.stringify({ step: 'firewall', message: 'Adding to firewall...' }) + '\n\n');
-          await doService.addDropletToFirewall(firewall_id, droplet.id);
-          console.log('[NOC Worker] Added to firewall:', firewall_id);
+          try {
+            console.log('[NOC Worker] Step 3c: Add to firewall');
+            await stream.write('data: ' + JSON.stringify({ step: 'firewall', message: 'Adding to firewall...' }) + '\n\n');
+            await doService.addDropletToFirewall(firewall_id, droplet.id);
+            console.log('[NOC Worker] Added to firewall:', firewall_id);
+          } catch (error: any) {
+            console.error('[NOC Worker] Failed to add to firewall (non-fatal):', error.message);
+            await stream.write('data: ' + JSON.stringify({
+              step: 'firewall',
+              message: 'Firewall assignment failed (check token permissions) - continuing deployment...',
+              warning: true
+            }) + '\n\n');
+          }
         }
 
         // Step 4: Wait for IP address
@@ -312,17 +321,35 @@ app.post('/api/deploy', async (c) => {
 
         // Step 4a: Add to database cluster (if specified)
         if (database_id) {
-          console.log('[NOC Worker] Step 4a: Add to database cluster');
-          await stream.write('data: ' + JSON.stringify({ step: 'database', message: 'Adding to database cluster...' }) + '\n\n');
-          await doService.addDatabaseTrustedSource(database_id, finalIP, droplet.id);
-          console.log('[NOC Worker] Added to database cluster:', database_id);
+          try {
+            console.log('[NOC Worker] Step 4a: Add to database cluster');
+            await stream.write('data: ' + JSON.stringify({ step: 'database', message: 'Adding to database cluster...' }) + '\n\n');
+            await doService.addDatabaseTrustedSource(database_id, finalIP, droplet.id);
+            console.log('[NOC Worker] Added to database cluster:', database_id);
+          } catch (error: any) {
+            console.error('[NOC Worker] Failed to add to database cluster (non-fatal):', error.message);
+            await stream.write('data: ' + JSON.stringify({
+              step: 'database',
+              message: 'Database trusted source assignment failed (check token permissions) - continuing deployment...',
+              warning: true
+            }) + '\n\n');
+          }
         }
 
         // Step 5: Create DNS records
-        console.log('[NOC Worker] Step 5: Create DNS records');
-        await stream.write('data: ' + JSON.stringify({ step: 'dns', message: 'Creating DNS records...' }) + '\n\n');
-        await dnsService.createServerRecords(server_name, finalIP, enable_cloudflare_proxy || false);
-        console.log('[NOC Worker] DNS records created');
+        try {
+          console.log('[NOC Worker] Step 5: Create DNS records');
+          await stream.write('data: ' + JSON.stringify({ step: 'dns', message: 'Creating DNS records...' }) + '\n\n');
+          await dnsService.createServerRecords(server_name, finalIP, enable_cloudflare_proxy || false);
+          console.log('[NOC Worker] DNS records created');
+        } catch (error: any) {
+          console.error('[NOC Worker] Failed to create DNS records (non-fatal):', error.message);
+          await stream.write('data: ' + JSON.stringify({
+            step: 'dns',
+            message: 'DNS creation failed (check Cloudflare token permissions) - continuing deployment...',
+            warning: true
+          }) + '\n\n');
+        }
 
         // Step 6: Complete
         console.log('[NOC Worker] Deployment complete!');
