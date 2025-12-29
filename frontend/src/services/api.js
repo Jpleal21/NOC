@@ -29,27 +29,27 @@ class ApiClient {
 
   // Get all available regions
   async getRegions() {
-    return this.get('/regions');
+    return this.get('/api/regions');
   }
 
   // Get VPCs filtered by region
   async getVPCs(region) {
-    return this.get(`/vpcs?region=${region}`);
+    return this.get(`/api/vpcs?region=${region}`);
   }
 
   // Get all deployed servers
   async getServers() {
-    return this.get('/servers');
+    return this.get('/api/servers');
   }
 
   // Delete server by name
   async deleteServer(name) {
-    return this.delete(`/servers/${name}`);
+    return this.delete(`/api/servers/${name}`);
   }
 
   // Deploy new server (returns EventSource for SSE)
   deployServer(data) {
-    return fetch(`${API_BASE_URL}/deploy`, {
+    return fetch(`${API_BASE_URL}/api/deploy`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
