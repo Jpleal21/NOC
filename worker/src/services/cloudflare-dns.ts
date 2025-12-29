@@ -62,14 +62,15 @@ export class CloudflareDNSService {
   }
 
   // Create 3 DNS records for a server
-  async createServerRecords(serverName: string, ipAddress: string, enableProxy: boolean) {
+  // All records are proxied through Cloudflare for security and DDoS protection
+  async createServerRecords(serverName: string, ipAddress: string, enableProxy: boolean = true) {
     console.log('[Cloudflare DNS] Creating server records for:', serverName);
     console.log('[Cloudflare DNS] IP address:', ipAddress, 'Proxy enabled:', enableProxy);
 
     const records = [
       { name: serverName + '.flaggerlink.com', content: ipAddress, proxied: enableProxy },
-      { name: serverName + '-api.flaggerlink.com', content: ipAddress, proxied: false },
-      { name: serverName + '-text-api.flaggerlink.com', content: ipAddress, proxied: false },
+      { name: serverName + '-api.flaggerlink.com', content: ipAddress, proxied: enableProxy },
+      { name: serverName + '-text-api.flaggerlink.com', content: ipAddress, proxied: enableProxy },
     ];
 
     console.log('[Cloudflare DNS] Creating', records.length, 'DNS records');
