@@ -16,13 +16,14 @@
     }
   ],
   
-  // Secret Store binding (FlaggerLink shared secret store)
-  "secrets": {
-    "bindings": [
-      {
-        "type": "secret_store",
-        "binding": "SECRETS"
-      }
-    ]
-  }
+  // Secret Store bindings (FlaggerLink shared secret store)
+  "secrets_store_secrets": [
+    { "binding": "INFISICAL_CLIENT_ID", "store_id": "04cf53bd04d84e1dbbc484d787ba1ff8", "secret_name": "INFISICAL_CLIENT_ID" },
+    { "binding": "INFISICAL_CLIENT_SECRET", "store_id": "04cf53bd04d84e1dbbc484d787ba1ff8", "secret_name": "INFISICAL_CLIENT_SECRET" },
+    { "binding": "INFISICAL_PROJECT_ID", "store_id": "04cf53bd04d84e1dbbc484d787ba1ff8", "secret_name": "INFISICAL_PROJECT_ID" },
+    { "binding": "DIGITALOCEAN_TOKEN", "store_id": "04cf53bd04d84e1dbbc484d787ba1ff8", "secret_name": "DIGITALOCEAN_TOKEN" },
+    { "binding": "CLOUDFLARE_API_TOKEN", "store_id": "04cf53bd04d84e1dbbc484d787ba1ff8", "secret_name": "CLOUDFLARE_API_TOKEN" },
+    { "binding": "CLOUDFLARE_ZONE_ID", "store_id": "04cf53bd04d84e1dbbc484d787ba1ff8", "secret_name": "CLOUDFLARE_ZONE_ID" },
+    { "binding": "GITHUB_TOKEN", "store_id": "04cf53bd04d84e1dbbc484d787ba1ff8", "secret_name": "GITHUB_TOKEN" }
+  ]
 }

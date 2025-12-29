@@ -7,9 +7,13 @@ import { CloudflareDNSService } from './services/cloudflare-dns';
 import { renderCloudInit } from './lib/cloud-init';
 
 type Bindings = {
-  SECRETS: {
-    get(key: string): Promise<string | null>;
-  };
+  INFISICAL_CLIENT_ID: string;
+  INFISICAL_CLIENT_SECRET: string;
+  INFISICAL_PROJECT_ID: string;
+  DIGITALOCEAN_TOKEN: string;
+  CLOUDFLARE_API_TOKEN: string;
+  CLOUDFLARE_ZONE_ID: string;
+  GITHUB_TOKEN: string;
 };
 
 const app = new Hono<{ Bindings: Bindings }>();
@@ -21,15 +25,6 @@ app.use('/*', cors({
   allowHeaders: ['Content-Type', 'Authorization'],
 }));
 
-// Helper to get secret
-async function getSecret(c: any, key: string): Promise<string> {
-  const value = await c.env.SECRETS.get(key);
-  if (!value) {
-    throw new Error('Secret not found: ' + key);
-  }
-  return value;
-}
-
 // Health check
 app.get('/health', (c) => {
   return c.json({ status: 'ok', service: 'noc-worker' });
@@ -38,8 +33,7 @@ app.get('/health', (c) => {
 // Get all available regions
 app.get('/api/regions', async (c) => {
   try {
-    const doToken = await getSecret(c, 'DIGITALOCEAN_TOKEN');
-    const doService = new DigitalOceanService(doToken);
+    const doService = new DigitalOceanService(c.env.DIGITALOCEAN_TOKEN);
     const regions = await doService.getRegions();
     return c.json({ success: true, regions });
   } catch (error: any) {
@@ -51,8 +45,7 @@ app.get('/api/regions', async (c) => {
 app.get('/api/vpcs', async (c) => {
   try {
     const region = c.req.query('region');
-    const doToken = await getSecret(c, 'DIGITALOCEAN_TOKEN');
-    const doService = new DigitalOceanService(doToken);
+    const doService = new DigitalOceanService(c.env.DIGITALOCEAN_TOKEN);
 
     const vpcs = region
       ? await doService.getVPCsByRegion(region)
@@ -67,8 +60,7 @@ app.get('/api/vpcs', async (c) => {
 // Get all deployed servers (filtered by noc-managed tag)
 app.get('/api/servers', async (c) => {
   try {
-    const doToken = await getSecret(c, 'DIGITALOCEAN_TOKEN');
-    const doService = new DigitalOceanService(doToken);
+    const doService = new DigitalOceanService(c.env.DIGITALOCEAN_TOKEN);
     const droplets = await doService.listDroplets('noc-managed');
 
     return c.json({
@@ -99,21 +91,12 @@ app.post('/api/deploy', async (c) => {
       return c.json({ success: false, error: 'Missing required fields' }, 400);
     }
 
-    // Get secrets
-    const doToken = await getSecret(c, 'DIGITALOCEAN_TOKEN');
-    const cfToken = await getSecret(c, 'CLOUDFLARE_API_TOKEN');
-    const cfZoneId = await getSecret(c, 'CLOUDFLARE_ZONE_ID');
-    const githubToken = await getSecret(c, 'GITHUB_TOKEN');
-    const infisicalClientId = await getSecret(c, 'INFISICAL_CLIENT_ID');
-    const infisicalClientSecret = await getSecret(c, 'INFISICAL_CLIENT_SECRET');
-    const infisicalProjectId = await getSecret(c, 'INFISICAL_PROJECT_ID');
-
     // Initialize services
-    const doService = new DigitalOceanService(doToken);
-    const dnsService = new CloudflareDNSService(cfToken, cfZoneId);
+    const doService = new DigitalOceanService(c.env.DIGITALOCEAN_TOKEN);
+    const dnsService = new CloudflareDNSService(c.env.CLOUDFLARE_API_TOKEN, c.env.CLOUDFLARE_ZONE_ID);
     const infisicalService = new InfisicalService(
-      { clientId: infisicalClientId, clientSecret: infisicalClientSecret },
-      infisicalProjectId
+      { clientId: c.env.INFISICAL_CLIENT_ID, clientSecret: c.env.INFISICAL_CLIENT_SECRET },
+      c.env.INFISICAL_PROJECT_ID
     );
 
     // Stream deployment progress
@@ -125,7 +108,7 @@ app.post('/api/deploy', async (c) => {
 
         // Step 2: Render cloud-init template
         await stream.write('data: ' + JSON.stringify({ step: 'template', message: 'Rendering cloud-init template...' }) + '\n\n');
-        const cloudInit = await renderCloudInit({ secrets, githubToken, branch });
+        const cloudInit = await renderCloudInit({ secrets, githubToken: c.env.GITHUB_TOKEN, branch });
 
         // Step 3: Create droplet
         await stream.write('data: ' + JSON.stringify({ step: 'droplet', message: 'Creating DigitalOcean droplet...' }) + '\n\n');
@@ -181,12 +164,8 @@ app.delete('/api/servers/:name', async (c) => {
   try {
     const serverName = c.req.param('name');
 
-    const doToken = await getSecret(c, 'DIGITALOCEAN_TOKEN');
-    const cfToken = await getSecret(c, 'CLOUDFLARE_API_TOKEN');
-    const cfZoneId = await getSecret(c, 'CLOUDFLARE_ZONE_ID');
-
-    const doService = new DigitalOceanService(doToken);
-    const dnsService = new CloudflareDNSService(cfToken, cfZoneId);
+    const doService = new DigitalOceanService(c.env.DIGITALOCEAN_TOKEN);
+    const dnsService = new CloudflareDNSService(c.env.CLOUDFLARE_API_TOKEN, c.env.CLOUDFLARE_ZONE_ID);
 
     // Find droplet by name
     const droplets = await doService.listDroplets('noc-managed');
