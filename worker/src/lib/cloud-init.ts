@@ -9,12 +9,22 @@ interface CloudInitParams {
   branch: string;
 }
 
+// Helper function to indent multi-line strings for YAML
+function indentLines(text: string, spaces: number): string {
+  const indent = ' '.repeat(spaces);
+  return text.split('\n').map(line => indent + line).join('\n');
+}
+
 export async function renderCloudInit(params: CloudInitParams): Promise<string> {
   // Read the cloud-init template from shared/templates
   // In Worker environment, we'll inline the template or fetch it from KV
   // For now, we'll construct it programmatically
-  
+
   const { secrets, githubToken, branch } = params;
+
+  // Indent certificate content for YAML (6 spaces for content under write_files)
+  const certIndented = indentLines(secrets.CLOUDFLARE_ORIGIN_CERT, 6);
+  const keyIndented = indentLines(secrets.CLOUDFLARE_ORIGIN_KEY, 6);
 
   return `#cloud-config
 # FlaggerLink Server Provisioning - NOC Automated Deployment
@@ -134,12 +144,12 @@ write_files:
 
   - path: /etc/ssl/cloudflare/origin.pem
     content: |
-      ${secrets.CLOUDFLARE_ORIGIN_CERT}
+${certIndented}
     permissions: '0644'
 
   - path: /etc/ssl/cloudflare/origin.key
     content: |
-      ${secrets.CLOUDFLARE_ORIGIN_KEY}
+${keyIndented}
     permissions: '0600'
 
   - path: /etc/nginx/sites-available/default
