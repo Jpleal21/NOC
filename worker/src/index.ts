@@ -337,19 +337,10 @@ app.post('/api/deploy', async (c) => {
         }
 
         // Step 5: Create DNS records
-        try {
-          console.log('[NOC Worker] Step 5: Create DNS records');
-          await stream.write('data: ' + JSON.stringify({ step: 'dns', message: 'Creating DNS records...' }) + '\n\n');
-          await dnsService.createServerRecords(server_name, finalIP, enable_cloudflare_proxy || false);
-          console.log('[NOC Worker] DNS records created');
-        } catch (error: any) {
-          console.error('[NOC Worker] Failed to create DNS records (non-fatal):', error.message);
-          await stream.write('data: ' + JSON.stringify({
-            step: 'dns',
-            message: 'DNS creation failed (check Cloudflare token permissions) - continuing deployment...',
-            warning: true
-          }) + '\n\n');
-        }
+        console.log('[NOC Worker] Step 5: Create DNS records');
+        await stream.write('data: ' + JSON.stringify({ step: 'dns', message: 'Creating DNS records...' }) + '\n\n');
+        await dnsService.createServerRecords(server_name, finalIP, enable_cloudflare_proxy || false);
+        console.log('[NOC Worker] DNS records created');
 
         // Step 6: Complete
         console.log('[NOC Worker] Deployment complete!');
