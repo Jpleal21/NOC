@@ -40,12 +40,61 @@
 
     <!-- Final Success -->
     <div v-if="deploymentComplete && !deploymentError" class="mt-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg">
-      <p class="text-sm font-medium text-green-800 dark:text-green-300">
-        Deployment complete! Server is being provisioned.
-      </p>
-      <p v-if="deploymentResult" class="text-xs text-green-600 dark:text-green-400 mt-1">
-        IP: {{ deploymentResult.ip_address }} | ID: {{ deploymentResult.droplet_id }}
-      </p>
+      <div class="flex items-start justify-between">
+        <div class="flex-1">
+          <p class="text-sm font-medium text-green-800 dark:text-green-300">
+            Infrastructure provisioning complete!
+          </p>
+          <p v-if="deploymentResult" class="text-xs text-green-600 dark:text-green-400 mt-1">
+            IP: {{ deploymentResult.ip_address }} | ID: {{ deploymentResult.droplet_id }}
+          </p>
+          <p class="text-xs text-green-600 dark:text-green-400 mt-2">
+            Next: Deploy FlaggerLink application to this server
+          </p>
+        </div>
+        <button
+          v-if="!applicationDeploying && !applicationDeployed"
+          @click="emitDeployApplication"
+          class="ml-4 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors"
+        >
+          Deploy Application
+        </button>
+      </div>
+
+      <!-- Application Deployment Status -->
+      <div v-if="applicationDeploying" class="mt-4 pt-4 border-t border-green-200 dark:border-green-700">
+        <div class="flex items-center space-x-2">
+          <svg class="animate-spin h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <p class="text-xs text-green-600 dark:text-green-400">
+            Deploying application via GitHub Actions...
+          </p>
+        </div>
+        <a
+          v-if="workflowUrl"
+          :href="workflowUrl"
+          target="_blank"
+          class="text-xs text-primary-600 hover:text-primary-700 mt-2 inline-block"
+        >
+          View workflow progress →
+        </a>
+      </div>
+
+      <div v-if="applicationDeployed" class="mt-4 pt-4 border-t border-green-200 dark:border-green-700">
+        <p class="text-xs text-green-600 dark:text-green-400">
+          ✓ Application deployment started in GitHub Actions
+        </p>
+        <a
+          v-if="workflowUrl"
+          :href="workflowUrl"
+          target="_blank"
+          class="text-xs text-primary-600 hover:text-primary-700 mt-1 inline-block"
+        >
+          View workflow →
+        </a>
+      </div>
     </div>
 
     <!-- Error -->
@@ -58,15 +107,30 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, defineEmits } from 'vue';
+
+const emit = defineEmits(['deployApplication']);
 
 const isDeploying = ref(false);
 const deploymentComplete = ref(false);
 const deploymentError = ref(null);
 const deploymentResult = ref(null);
 const steps = ref([]);
+const applicationDeploying = ref(false);
+const applicationDeployed = ref(false);
+const workflowUrl = ref(null);
 
 const showProgress = computed(() => steps.value.length > 0);
+
+function emitDeployApplication() {
+  if (!deploymentResult.value) return;
+
+  applicationDeploying.value = true;
+  emit('deployApplication', {
+    droplet_id: deploymentResult.value.droplet_id,
+    ip_address: deploymentResult.value.ip_address,
+  });
+}
 
 function getStepClass(step) {
   if (step.status === 'loading') {
@@ -118,6 +182,15 @@ defineExpose({
     isDeploying.value = true;
     deploymentComplete.value = false;
     deploymentError.value = null;
+  },
+  setApplicationDeploymentStarted(url) {
+    applicationDeploying.value = false;
+    applicationDeployed.value = true;
+    workflowUrl.value = url;
+  },
+  setApplicationDeploymentError() {
+    applicationDeploying.value = false;
+    applicationDeployed.value = false;
   }
 });
 </script>

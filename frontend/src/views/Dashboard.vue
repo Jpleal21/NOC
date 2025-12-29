@@ -34,7 +34,10 @@
         </div>
 
         <!-- Deployment Progress -->
-        <DeploymentProgress ref="progress" />
+        <DeploymentProgress
+          ref="progress"
+          @deployApplication="handleDeployApplication"
+        />
       </div>
     </main>
   </div>
@@ -51,6 +54,7 @@ const servers = ref([]);
 const loadingServers = ref(false);
 const deploymentForm = ref(null);
 const progress = ref(null);
+const lastDeploymentData = ref(null);
 
 onMounted(() => {
   loadServers();
@@ -68,6 +72,12 @@ async function loadServers() {
 async function handleDeploy(formData) {
   progress.value.reset();
   progress.value.setDeploying();
+
+  // Store deployment data for Phase 2
+  lastDeploymentData.value = {
+    server_name: formData.server_name,
+    branch: formData.branch,
+  };
 
   try {
     const response = await api.deployServer(formData);
@@ -146,6 +156,33 @@ async function handleDelete(serverName) {
     alert('Server deleted successfully');
   } else {
     alert('Failed to delete server: ' + result.error);
+  }
+}
+
+async function handleDeployApplication(data) {
+  if (!lastDeploymentData.value) {
+    alert('No deployment data available');
+    progress.value.setApplicationDeploymentError();
+    return;
+  }
+
+  try {
+    const result = await api.deployApplication({
+      droplet_id: data.droplet_id,
+      droplet_ip: data.ip_address,
+      server_name: lastDeploymentData.value.server_name,
+      branch: lastDeploymentData.value.branch,
+    });
+
+    if (result.success) {
+      progress.value.setApplicationDeploymentStarted(result.workflow_url);
+    } else {
+      alert('Failed to start application deployment: ' + result.error);
+      progress.value.setApplicationDeploymentError();
+    }
+  } catch (error) {
+    alert('Error starting application deployment: ' + error.message);
+    progress.value.setApplicationDeploymentError();
   }
 }
 </script>

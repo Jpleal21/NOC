@@ -75,6 +75,11 @@ class ApiClient {
       body: JSON.stringify(data),
     });
   }
+
+  // Deploy application to provisioned server (triggers GitHub Actions)
+  async deployApplication(data) {
+    return this.post('/api/deploy/application', data);
+  }
 }
 
 export default new ApiClient();

@@ -389,4 +389,96 @@ app.delete('/api/servers/:name', async (c) => {
   }
 });
 
+// Deploy application to provisioned server (triggers GitHub Actions)
+app.post('/api/deploy/application', async (c) => {
+  try {
+    console.log('[NOC Worker] POST /api/deploy/application');
+    const body = await c.req.json();
+    const { droplet_id, droplet_ip, server_name, branch } = body;
+
+    console.log('[NOC Worker] Application deployment request:', {
+      droplet_id,
+      droplet_ip,
+      server_name,
+      branch,
+    });
+
+    // Validation
+    if (!droplet_id || !droplet_ip || !server_name || !branch) {
+      console.error('[NOC Worker] Missing required fields');
+      return c.json({ success: false, error: 'Missing required fields' }, 400);
+    }
+
+    // Get GitHub token
+    const githubToken = await c.env.GITHUB_TOKEN.get();
+
+    // Trigger GitHub Actions workflow
+    console.log('[NOC Worker] Triggering GitHub Actions workflow...');
+    const workflowResponse = await fetch(
+      'https://api.github.com/repos/RichardHorwath/FlaggerLink/actions/workflows/noc-deploy-application.yml/dispatches',
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${githubToken}`,
+          'Accept': 'application/vnd.github+json',
+          'Content-Type': 'application/json',
+          'X-GitHub-Api-Version': '2022-11-28',
+        },
+        body: JSON.stringify({
+          ref: branch,
+          inputs: {
+            droplet_ip: droplet_ip,
+            droplet_id: droplet_id.toString(),
+            server_name: server_name,
+            branch: branch,
+          },
+        }),
+      }
+    );
+
+    if (!workflowResponse.ok) {
+      const errorText = await workflowResponse.text();
+      console.error('[NOC Worker] GitHub Actions trigger failed:', workflowResponse.status, errorText);
+      throw new Error(`GitHub Actions trigger failed: ${workflowResponse.status} - ${errorText}`);
+    }
+
+    console.log('[NOC Worker] GitHub Actions workflow triggered successfully');
+
+    // Get the workflow run (we need to poll for it since GitHub doesn't return it immediately)
+    // Wait a moment for the run to be created
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Get recent workflow runs to find ours
+    const runsResponse = await fetch(
+      'https://api.github.com/repos/RichardHorwath/FlaggerLink/actions/workflows/noc-deploy-application.yml/runs?per_page=1',
+      {
+        headers: {
+          'Authorization': `Bearer ${githubToken}`,
+          'Accept': 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28',
+        },
+      }
+    );
+
+    let workflowRunUrl = 'https://github.com/RichardHorwath/FlaggerLink/actions';
+    if (runsResponse.ok) {
+      const runsData = await runsResponse.json();
+      if (runsData.workflow_runs && runsData.workflow_runs.length > 0) {
+        workflowRunUrl = runsData.workflow_runs[0].html_url;
+      }
+    }
+
+    return c.json({
+      success: true,
+      message: 'Application deployment started',
+      workflow_url: workflowRunUrl,
+      note: 'Deployment is running in GitHub Actions. Check the workflow URL for progress.',
+    });
+
+  } catch (error: any) {
+    console.error('[NOC Worker] Deploy application error:', error);
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
 export default app;
