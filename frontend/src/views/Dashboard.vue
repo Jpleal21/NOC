@@ -29,6 +29,7 @@
               :loading="loadingServers"
               @refresh="loadServers"
               @delete="handleDelete"
+              @deploy="handleDeployToServer"
             />
           </div>
         </div>
@@ -38,6 +39,50 @@
           ref="progress"
           @deployApplication="handleDeployApplication"
         />
+
+        <!-- Branch Selection Modal -->
+        <div v-if="showBranchModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div class="bg-white dark:bg-dark-card rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Deploy Application to {{ selectedServer?.name }}
+            </h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              IP: {{ selectedServer?.ip_address }}
+            </p>
+
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Select Branch
+              </label>
+              <select
+                v-model="selectedBranch"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg
+                       bg-white dark:bg-dark-card text-gray-900 dark:text-white
+                       focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="master">master (Production)</option>
+                <option value="staging">staging (Staging)</option>
+                <option value="development">development (Development)</option>
+              </select>
+            </div>
+
+            <div class="flex space-x-3">
+              <button
+                @click="confirmDeploy"
+                class="flex-1 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors"
+              >
+                Deploy
+              </button>
+              <button
+                @click="showBranchModal = false"
+                class="flex-1 px-4 py-2 bg-gray-200 dark:bg-dark-hover hover:bg-gray-300 dark:hover:bg-dark-border
+                       text-gray-700 dark:text-gray-300 font-medium rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </main>
   </div>
@@ -55,6 +100,9 @@ const loadingServers = ref(false);
 const deploymentForm = ref(null);
 const progress = ref(null);
 const lastDeploymentData = ref(null);
+const showBranchModal = ref(false);
+const selectedServer = ref(null);
+const selectedBranch = ref('master');
 
 onMounted(() => {
   loadServers();
@@ -183,6 +231,36 @@ async function handleDeployApplication(data) {
   } catch (error) {
     alert('Error starting application deployment: ' + error.message);
     progress.value.setApplicationDeploymentError();
+  }
+}
+
+function handleDeployToServer(server) {
+  selectedServer.value = server;
+  selectedBranch.value = 'master';
+  showBranchModal.value = true;
+}
+
+async function confirmDeploy() {
+  showBranchModal.value = false;
+
+  if (!selectedServer.value) return;
+
+  try {
+    const result = await api.deployApplication({
+      droplet_id: selectedServer.value.id,
+      droplet_ip: selectedServer.value.ip_address,
+      server_name: selectedServer.value.name,
+      branch: selectedBranch.value,
+    });
+
+    if (result.success) {
+      alert(`Application deployment started!\n\nServer: ${selectedServer.value.name}\nBranch: ${selectedBranch.value}\n\nView progress: ${result.workflow_url}`);
+      window.open(result.workflow_url, '_blank');
+    } else {
+      alert('Failed to start application deployment: ' + result.error);
+    }
+  } catch (error) {
+    alert('Error starting application deployment: ' + error.message);
   }
 }
 </script>

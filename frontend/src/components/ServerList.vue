@@ -76,7 +76,14 @@
             <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
               {{ formatDate(server.created_at) }}
             </td>
-            <td class="px-4 py-3 text-sm text-right">
+            <td class="px-4 py-3 text-sm text-right space-x-2">
+              <button
+                v-if="server.status === 'active' && server.ip_address"
+                @click="$emit('deploy', server)"
+                class="text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 font-medium"
+              >
+                Deploy App
+              </button>
               <button
                 @click="$emit('delete', server.name)"
                 class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 font-medium"
@@ -103,7 +110,7 @@ defineProps({
   }
 });
 
-defineEmits(['refresh', 'delete']);
+defineEmits(['refresh', 'delete', 'deploy']);
 
 function getStatusClass(status) {
   const classes = {
