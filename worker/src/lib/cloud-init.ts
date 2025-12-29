@@ -101,16 +101,7 @@ runcmd:
   - chown -R flaggerlink:flaggerlink /var/log/flaggerlink
   - chown -R www-data:www-data /var/www/flaggerlink
 
-  # Install Cloudflare Origin Certificate
-  - mkdir -p /etc/ssl/cloudflare
-  - |
-    cat > /etc/ssl/cloudflare/origin.pem << 'CERTEOF'
-    ${secrets.CLOUDFLARE_ORIGIN_CERT}
-    CERTEOF
-  - |
-    cat > /etc/ssl/cloudflare/origin.key << 'KEYEOF'
-    ${secrets.CLOUDFLARE_ORIGIN_KEY}
-    KEYEOF
+  # Set SSL Certificate Permissions (files written by write_files)
   - chmod 644 /etc/ssl/cloudflare/origin.pem
   - chmod 600 /etc/ssl/cloudflare/origin.key
   - chown root:root /etc/ssl/cloudflare/origin.pem
@@ -140,6 +131,16 @@ write_files:
       Branch: ${branch}
       NOC Platform: Automated Deployment
     permissions: '0644'
+
+  - path: /etc/ssl/cloudflare/origin.pem
+    content: |
+      ${secrets.CLOUDFLARE_ORIGIN_CERT}
+    permissions: '0644'
+
+  - path: /etc/ssl/cloudflare/origin.key
+    content: |
+      ${secrets.CLOUDFLARE_ORIGIN_KEY}
+    permissions: '0600'
 
   - path: /etc/nginx/sites-available/default
     content: |
