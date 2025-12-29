@@ -72,7 +72,8 @@ export class InfisicalService {
 
     const token = await this.authenticate();
 
-    const secretsUrl = `${this.baseUrl}/secrets?workspaceId=${this.projectId}&environment=${environment}`;
+    // Use v4 API with correct parameter names
+    const secretsUrl = `https://app.infisical.com/api/v4/secrets?projectId=${this.projectId}&environment=${environment}&secretPath=/`;
     console.log('[Infisical] Fetching secrets from:', secretsUrl);
 
     const response = await fetch(secretsUrl, {
