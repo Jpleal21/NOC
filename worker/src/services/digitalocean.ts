@@ -199,15 +199,34 @@ export class DigitalOceanService {
     console.log('[DigitalOcean] Adding trusted source to database', databaseId);
     console.log('[DigitalOcean] IP:', ipAddress, 'Droplet ID:', dropletId);
 
-    const trustedSource: any = {
+    // CRITICAL: GET existing firewall rules first to avoid wiping out other servers
+    const firewall = await this.request<{ rules: any[] }>(`/databases/${databaseId}/firewall`);
+    const existingRules = firewall.rules || [];
+    console.log('[DigitalOcean] Existing firewall rules:', existingRules.length);
+
+    const newSource: any = {
       type: dropletId ? 'droplet' : 'ip_addr',
       value: dropletId ? dropletId.toString() : ipAddress,
     };
 
+    // Check if this source already exists
+    const sourceExists = existingRules.some((rule: any) =>
+      rule.type === newSource.type && rule.value === newSource.value
+    );
+
+    if (sourceExists) {
+      console.log('[DigitalOcean] Trusted source already exists, skipping');
+      return { success: true, alreadyExists: true };
+    }
+
+    // Add new source to existing rules
+    const updatedRules = [...existingRules, newSource];
+    console.log('[DigitalOcean] Updating firewall with', updatedRules.length, 'rules (added 1 new)');
+
     await this.request(`/databases/${databaseId}/firewall`, {
       method: 'PUT',
       body: JSON.stringify({
-        rules: [trustedSource],
+        rules: updatedRules,
       }),
     });
 
