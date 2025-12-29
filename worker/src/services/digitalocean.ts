@@ -44,6 +44,11 @@ export class DigitalOceanService {
       throw new Error(`DigitalOcean API error: ${response.status} - ${error}`);
     }
 
+    // 204 No Content - return empty object
+    if (response.status === 204) {
+      return {} as T;
+    }
+
     return response.json();
   }
 
