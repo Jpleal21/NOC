@@ -144,10 +144,10 @@ runcmd:
   # Set SSL Certificate Permissions
   # ========================================================================
   - echo "Setting SSL certificate permissions..."
-  - chmod 644 /etc/ssl/cloudflare/origin.pem
-  - chmod 600 /etc/ssl/cloudflare/origin.key
-  - chown root:root /etc/ssl/cloudflare/origin.pem
-  - chown root:root /etc/ssl/cloudflare/origin.key
+  - chmod 644 /etc/ssl/cloudflare/flaggerlink.com.pem
+  - chmod 600 /etc/ssl/cloudflare/flaggerlink.com.key
+  - chown root:root /etc/ssl/cloudflare/flaggerlink.com.pem
+  - chown root:root /etc/ssl/cloudflare/flaggerlink.com.key
 
   # ========================================================================
   # Configure Firewall (UFW)
@@ -186,13 +186,13 @@ write_files:
     permissions: '0644'
 
   # Cloudflare Origin SSL Certificate
-  - path: /etc/ssl/cloudflare/origin.pem
+  - path: /etc/ssl/cloudflare/flaggerlink.com.pem
     content: |
 \${CLOUDFLARE_ORIGIN_CERT_INDENTED}
     permissions: '0644'
 
   # Cloudflare Origin SSL Private Key
-  - path: /etc/ssl/cloudflare/origin.key
+  - path: /etc/ssl/cloudflare/flaggerlink.com.key
     content: |
 \${CLOUDFLARE_ORIGIN_KEY_INDENTED}
     permissions: '0600'
@@ -207,8 +207,8 @@ write_files:
           listen [::]:443 ssl http2 default_server;
 
           # Cloudflare Origin Certificate
-          ssl_certificate /etc/ssl/cloudflare/origin.pem;
-          ssl_certificate_key /etc/ssl/cloudflare/origin.key;
+          ssl_certificate /etc/ssl/cloudflare/flaggerlink.com.pem;
+          ssl_certificate_key /etc/ssl/cloudflare/flaggerlink.com.key;
 
           # SSL Configuration
           ssl_protocols TLSv1.2 TLSv1.3;
