@@ -80,7 +80,7 @@ app.get('/api/servers', async (c) => {
         id: d.id,
         name: d.name,
         status: d.status,
-        ip_address: d.networks?.v4?.[0]?.ip_address || null,
+        ip_address: d.networks?.v4?.find((ip: any) => ip.type === 'public')?.ip_address || null,
         region: d.region?.slug,
         size: d.size?.slug,
         created_at: d.created_at,
@@ -309,7 +309,7 @@ app.post('/api/deploy', async (c) => {
         while (!ipAddress && attempts < 60) {
           await new Promise(resolve => setTimeout(resolve, 2000));
           const updated = await doService.getDroplet(droplet.id);
-          ipAddress = updated.networks?.v4?.[0]?.ip_address;
+          ipAddress = updated.networks?.v4?.find(ip => ip.type === 'public')?.ip_address;
           attempts++;
           if (attempts % 5 === 0) {
             console.log('[NOC Worker] Still waiting for IP... attempt', attempts);
