@@ -237,7 +237,7 @@ app.post('/api/deploy', async (c) => {
           name: server_name,
           region: droplet_region,
           size: droplet_size,
-          image: 'ubuntu-22-04-x64',
+          image: 'ubuntu-24-04-x64',
           vpc_uuid,
           user_data: cloudInit,
           ssh_keys: ssh_keys || [],

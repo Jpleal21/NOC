@@ -19,7 +19,7 @@ function indentLines(text: string, spaces: number): string {
 // This template is processed at runtime to inject secrets and configuration
 const CLOUD_INIT_TEMPLATE = `#cloud-config
 # FlaggerLink Server Provisioning
-# This cloud-init script prepares a fresh Ubuntu 22.04 server for FlaggerLink deployment
+# This cloud-init script prepares a fresh Ubuntu 24.04 LTS server for FlaggerLink deployment
 # It installs all dependencies and configures the environment
 
 package_update: true
@@ -54,7 +54,7 @@ runcmd:
   # Install .NET 8.0 Runtime
   # ========================================================================
   - echo "Installing .NET 8.0 runtime..."
-  - wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
+  - wget https://packages.microsoft.com/config/ubuntu/24.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
   - dpkg -i packages-microsoft-prod.deb
   - rm packages-microsoft-prod.deb
   - apt-get update
@@ -69,7 +69,7 @@ runcmd:
   - sed -i 's/^bind .*/bind 127.0.0.1/' /etc/redis/redis.conf
   - systemctl enable redis-server
   - systemctl restart redis-server
-  - echo "✓ Redis configured with password from environment"
+  - echo "Redis configured with password from environment"
 
   # ========================================================================
   # Install and Configure RabbitMQ
@@ -87,7 +87,7 @@ runcmd:
   - rabbitmqctl set_user_tags "$RABBITMQ_USER" administrator
   - rabbitmqctl set_permissions -p / "$RABBITMQ_USER" ".*" ".*" ".*"
   - rabbitmq-plugins enable rabbitmq_management
-  - echo "✓ RabbitMQ configured with credentials from environment"
+  - echo "RabbitMQ configured with credentials from environment"
 
   # ========================================================================
   # Create Directory Structure
@@ -130,7 +130,7 @@ runcmd:
     ENCRYPTION_KEY=\${ENCRYPTION_KEY}
     EOF
   - chmod 600 /opt/flaggerlink/secrets/.env
-  - echo "✓ Secrets saved to /opt/flaggerlink/secrets/.env"
+  - echo "Secrets saved to /opt/flaggerlink/secrets/.env"
 
   # ========================================================================
   # Set Ownership
