@@ -1,6 +1,6 @@
 <template>
-  <div v-if="isDeploying || showProgress" class="card p-6 mt-6">
-    <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+  <div v-if="isDeploying || showProgress" class="bg-dark-card border border-dark-border rounded-lg shadow-lg p-6">
+    <h2 class="text-xl font-semibold text-white mb-4">
       Deployment Progress
     </h2>
 
@@ -13,25 +13,25 @@
       >
         <!-- Icon -->
         <div class="flex-shrink-0 mt-0.5">
-          <svg v-if="step.status === 'loading'" class="animate-spin h-5 w-5 text-primary-600" fill="none" viewBox="0 0 24 24">
+          <svg v-if="step.status === 'loading'" class="animate-spin h-5 w-5 text-primary-500" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          <svg v-else-if="step.status === 'complete'" class="h-5 w-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+          <svg v-else-if="step.status === 'complete'" class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
           </svg>
-          <svg v-else-if="step.status === 'error'" class="h-5 w-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+          <svg v-else-if="step.status === 'error'" class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
           </svg>
-          <div v-else class="h-5 w-5 rounded-full border-2 border-gray-300 dark:border-gray-600"></div>
+          <div v-else class="h-5 w-5 rounded-full border-2 border-dark-border"></div>
         </div>
 
         <!-- Message -->
         <div class="flex-1">
-          <p class="text-sm font-medium" :class="step.status === 'error' ? 'text-red-700 dark:text-red-400' : 'text-gray-900 dark:text-white'">
+          <p class="text-sm font-medium" :class="step.status === 'error' ? 'text-red-400' : 'text-white'">
             {{ step.message }}
           </p>
-          <p v-if="step.details" class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          <p v-if="step.details" class="text-xs text-dark-muted mt-1">
             {{ step.details }}
           </p>
         </div>
@@ -39,36 +39,36 @@
     </div>
 
     <!-- Final Success -->
-    <div v-if="deploymentComplete && !deploymentError" class="mt-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg">
+    <div v-if="deploymentComplete && !deploymentError" class="mt-4 p-4 bg-green-900/20 border border-green-700 rounded-lg">
       <div class="flex items-start justify-between">
         <div class="flex-1">
-          <p class="text-sm font-medium text-green-800 dark:text-green-300">
+          <p class="text-sm font-medium text-green-300">
             Infrastructure provisioning complete!
           </p>
-          <p v-if="deploymentResult" class="text-xs text-green-600 dark:text-green-400 mt-1">
+          <p v-if="deploymentResult" class="text-xs text-green-400 mt-1">
             IP: {{ deploymentResult.ip_address }} | ID: {{ deploymentResult.droplet_id }}
           </p>
-          <p class="text-xs text-green-600 dark:text-green-400 mt-2">
+          <p class="text-xs text-green-400 mt-2">
             Next: Deploy FlaggerLink application to this server
           </p>
         </div>
         <button
           v-if="!applicationDeploying && !applicationDeployed"
           @click="emitDeployApplication"
-          class="ml-4 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors"
+          class="ml-4 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium rounded-lg transition-colors"
         >
           Deploy Application
         </button>
       </div>
 
       <!-- Application Deployment Status -->
-      <div v-if="applicationDeploying" class="mt-4 pt-4 border-t border-green-200 dark:border-green-700">
+      <div v-if="applicationDeploying" class="mt-4 pt-4 border-t border-green-700">
         <div class="flex items-center space-x-2">
-          <svg class="animate-spin h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24">
+          <svg class="animate-spin h-4 w-4 text-green-400" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          <p class="text-xs text-green-600 dark:text-green-400">
+          <p class="text-xs text-green-400">
             Deploying application via GitHub Actions...
           </p>
         </div>
@@ -76,21 +76,21 @@
           v-if="workflowUrl"
           :href="workflowUrl"
           target="_blank"
-          class="text-xs text-primary-600 hover:text-primary-700 mt-2 inline-block"
+          class="text-xs text-primary-400 hover:text-primary-300 mt-2 inline-block"
         >
           View workflow progress →
         </a>
       </div>
 
-      <div v-if="applicationDeployed" class="mt-4 pt-4 border-t border-green-200 dark:border-green-700">
-        <p class="text-xs text-green-600 dark:text-green-400">
+      <div v-if="applicationDeployed" class="mt-4 pt-4 border-t border-green-700">
+        <p class="text-xs text-green-400">
           ✓ Application deployment started in GitHub Actions
         </p>
         <a
           v-if="workflowUrl"
           :href="workflowUrl"
           target="_blank"
-          class="text-xs text-primary-600 hover:text-primary-700 mt-1 inline-block"
+          class="text-xs text-primary-400 hover:text-primary-300 mt-1 inline-block"
         >
           View workflow →
         </a>
@@ -98,8 +98,8 @@
     </div>
 
     <!-- Error -->
-    <div v-if="deploymentError" class="mt-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg">
-      <p class="text-sm font-medium text-red-800 dark:text-red-300">
+    <div v-if="deploymentError" class="mt-4 p-4 bg-red-900/20 border border-red-700 rounded-lg">
+      <p class="text-sm font-medium text-red-300">
         Deployment failed: {{ deploymentError }}
       </p>
     </div>
@@ -107,7 +107,7 @@
 </template>
 
 <script setup>
-import { ref, computed, defineEmits } from 'vue';
+import { ref, computed } from 'vue';
 
 const emit = defineEmits(['deployApplication']);
 
@@ -134,13 +134,13 @@ function emitDeployApplication() {
 
 function getStepClass(step) {
   if (step.status === 'loading') {
-    return 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700';
+    return 'bg-primary-900/20 border border-primary-700';
   } else if (step.status === 'complete') {
-    return 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700';
+    return 'bg-green-900/20 border border-green-700';
   } else if (step.status === 'error') {
-    return 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700';
+    return 'bg-red-900/20 border border-red-700';
   }
-  return 'bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700';
+  return 'bg-dark-hover border border-dark-border';
 }
 
 function addStep(message, status = 'loading', details = null) {
@@ -162,6 +162,9 @@ function reset() {
   deploymentError.value = null;
   deploymentResult.value = null;
   steps.value = [];
+  applicationDeploying.value = false;
+  applicationDeployed.value = false;
+  workflowUrl.value = null;
 }
 
 defineExpose({

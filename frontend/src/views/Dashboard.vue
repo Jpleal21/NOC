@@ -1,133 +1,162 @@
 <template>
-  <div class="min-h-screen bg-gray-50 dark:bg-dark-bg">
-    <header class="bg-white dark:bg-dark-card shadow">
-      <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
-          NOC Platform
-        </h1>
-        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-          FlaggerLink Infrastructure Management
-        </p>
+  <div class="min-h-screen bg-dark-bg">
+    <!-- Toast notifications -->
+    <Toast ref="toast" />
+
+    <!-- Header -->
+    <header class="bg-dark-card border-b border-dark-border shadow-lg">
+      <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex items-center justify-between">
+        <div class="flex items-center space-x-4">
+          <img src="/logo-small.png" alt="FlaggerLink" class="h-10 w-auto" />
+          <div>
+            <h1 class="text-2xl font-bold text-white">
+              NOC Platform
+            </h1>
+            <p class="text-sm text-dark-muted">
+              Infrastructure Management
+            </p>
+          </div>
+        </div>
+        <button
+          @click="showDeployModal = true"
+          class="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white font-medium rounded-lg
+                 transition-colors flex items-center space-x-2"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          <span>Deploy New Server</span>
+        </button>
       </div>
     </header>
 
-    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-      <div class="px-4 py-6 sm:px-0">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <!-- Deployment Form (Left) -->
-          <div class="lg:col-span-1">
-            <DeploymentForm
-              ref="deploymentForm"
-              @deploy="handleDeploy"
-            />
-          </div>
+    <main class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+      <!-- Deployment Progress (Always visible at top when active) -->
+      <DeploymentProgress
+        ref="progress"
+        @deployApplication="handleDeployApplication"
+        class="mb-6"
+      />
 
-          <!-- Server List (Right) -->
-          <div class="lg:col-span-2">
-            <ServerList
-              :servers="servers"
-              :loading="loadingServers"
-              @refresh="loadServers"
-              @delete="handleDelete"
-              @deploy="handleDeployToServer"
-            />
-          </div>
+      <!-- Server List (Full width) -->
+      <ServerList
+        :servers="servers"
+        :loading="loadingServers"
+        @refresh="loadServers"
+        @delete="handleDelete"
+        @deploy="handleDeployToServer"
+      />
+    </main>
+
+    <!-- Deploy New Server Modal -->
+    <div v-if="showDeployModal" class="fixed inset-0 bg-black/70 flex items-start justify-center z-50 overflow-y-auto py-8">
+      <div class="bg-dark-card border border-dark-border rounded-lg shadow-2xl w-full max-w-lg mx-4 relative">
+        <!-- Modal Header -->
+        <div class="flex items-center justify-between p-4 border-b border-dark-border">
+          <h2 class="text-xl font-semibold text-white">Deploy New Server</h2>
+          <button
+            @click="showDeployModal = false"
+            class="text-dark-muted hover:text-white transition-colors"
+          >
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
-
-        <!-- Deployment Progress -->
-        <DeploymentProgress
-          ref="progress"
-          @deployApplication="handleDeployApplication"
-        />
-
-        <!-- Delete Confirmation Modal -->
-        <div v-if="showDeleteModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div class="bg-white dark:bg-dark-card rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 class="text-lg font-semibold text-red-600 dark:text-red-400 mb-4">
-              Delete Server
-            </h3>
-            <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">
-              This will permanently destroy the droplet and remove all DNS records.
-            </p>
-            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Type <strong class="text-gray-900 dark:text-white">{{ serverToDelete }}</strong> to confirm:
-            </p>
-
-            <input
-              v-model="deleteConfirmation"
-              type="text"
-              placeholder="Enter server name"
-              class="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg mb-4
-                     bg-white dark:bg-dark-card text-gray-900 dark:text-white
-                     focus:ring-2 focus:ring-red-500"
-              @keyup.enter="confirmDelete"
-            />
-
-            <div class="flex space-x-3">
-              <button
-                @click="confirmDelete"
-                :disabled="deleteConfirmation !== serverToDelete"
-                class="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg
-                       transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Delete Server
-              </button>
-              <button
-                @click="cancelDelete"
-                class="flex-1 px-4 py-2 bg-gray-200 dark:bg-dark-hover hover:bg-gray-300 dark:hover:bg-dark-border
-                       text-gray-700 dark:text-gray-300 font-medium rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Branch Selection Modal -->
-        <div v-if="showBranchModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div class="bg-white dark:bg-dark-card rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Deploy Application to {{ selectedServer?.name }}
-            </h3>
-            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              IP: {{ selectedServer?.ip_address }}
-            </p>
-
-            <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Select Branch
-              </label>
-              <select
-                v-model="selectedBranch"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg
-                       bg-white dark:bg-dark-card text-gray-900 dark:text-white
-                       focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="master">master (Production)</option>
-                <option value="staging">staging (Staging)</option>
-                <option value="development">development (Development)</option>
-              </select>
-            </div>
-
-            <div class="flex space-x-3">
-              <button
-                @click="confirmDeploy"
-                class="flex-1 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors"
-              >
-                Deploy
-              </button>
-              <button
-                @click="showBranchModal = false"
-                class="flex-1 px-4 py-2 bg-gray-200 dark:bg-dark-hover hover:bg-gray-300 dark:hover:bg-dark-border
-                       text-gray-700 dark:text-gray-300 font-medium rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
+        <!-- Modal Body -->
+        <div class="p-4">
+          <DeploymentForm
+            ref="deploymentForm"
+            @deploy="handleDeploy"
+          />
         </div>
       </div>
-    </main>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div v-if="showDeleteModal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+      <div class="bg-dark-card border border-dark-border rounded-lg p-6 max-w-md w-full mx-4">
+        <h3 class="text-lg font-semibold text-red-400 mb-4">
+          Delete Server
+        </h3>
+        <p class="text-sm text-dark-muted mb-2">
+          This will permanently destroy the droplet and remove all DNS records.
+        </p>
+        <p class="text-sm text-dark-muted mb-4">
+          Type <strong class="text-white">{{ serverToDelete }}</strong> to confirm:
+        </p>
+
+        <input
+          v-model="deleteConfirmation"
+          type="text"
+          placeholder="Enter server name"
+          class="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-white
+                 placeholder-dark-muted focus:ring-2 focus:ring-red-500 focus:border-transparent"
+          @keyup.enter="confirmDelete"
+        />
+
+        <div class="flex space-x-3 mt-4">
+          <button
+            @click="confirmDelete"
+            :disabled="deleteConfirmation !== serverToDelete"
+            class="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg
+                   transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Delete Server
+          </button>
+          <button
+            @click="cancelDelete"
+            class="flex-1 px-4 py-2 bg-dark-hover hover:bg-dark-border text-dark-muted
+                   font-medium rounded-lg transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Branch Selection Modal -->
+    <div v-if="showBranchModal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+      <div class="bg-dark-card border border-dark-border rounded-lg p-6 max-w-md w-full mx-4">
+        <h3 class="text-lg font-semibold text-white mb-4">
+          Deploy Application to {{ selectedServer?.name }}
+        </h3>
+        <p class="text-sm text-dark-muted mb-4">
+          IP: {{ selectedServer?.ip_address }}
+        </p>
+
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-dark-muted mb-2">
+            Select Branch
+          </label>
+          <select
+            v-model="selectedBranch"
+            class="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-white
+                   focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          >
+            <option value="master">master (Production)</option>
+            <option value="staging">staging (Staging)</option>
+            <option value="development">development (Development)</option>
+          </select>
+        </div>
+
+        <div class="flex space-x-3">
+          <button
+            @click="confirmDeploy"
+            class="flex-1 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white font-medium rounded-lg transition-colors"
+          >
+            Deploy
+          </button>
+          <button
+            @click="showBranchModal = false"
+            class="flex-1 px-4 py-2 bg-dark-hover hover:bg-dark-border text-dark-muted
+                   font-medium rounded-lg transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -137,12 +166,15 @@ import api from '../services/api';
 import DeploymentForm from '../components/DeploymentForm.vue';
 import ServerList from '../components/ServerList.vue';
 import DeploymentProgress from '../components/DeploymentProgress.vue';
+import Toast from '../components/Toast.vue';
 
 const servers = ref([]);
 const loadingServers = ref(false);
 const deploymentForm = ref(null);
 const progress = ref(null);
+const toast = ref(null);
 const lastDeploymentData = ref(null);
+const showDeployModal = ref(false);
 const showBranchModal = ref(false);
 const selectedServer = ref(null);
 const selectedBranch = ref('master');
@@ -164,10 +196,10 @@ async function loadServers() {
 }
 
 async function handleDeploy(formData) {
+  showDeployModal.value = false;
   progress.value.reset();
   progress.value.setDeploying();
 
-  // Store deployment data for Phase 2
   lastDeploymentData.value = {
     server_name: formData.server_name,
     branch: formData.branch,
@@ -175,7 +207,7 @@ async function handleDeploy(formData) {
 
   try {
     const response = await api.deployServer(formData);
-    
+
     if (!response.ok) {
       throw new Error('Deployment request failed');
     }
@@ -223,19 +255,19 @@ async function handleDeploy(formData) {
           } else if (data.step === 'complete') {
             progress.value.updateLastStep('complete');
             progress.value.setComplete(data);
-            deploymentForm.value.resetForm();
+            deploymentForm.value?.resetForm();
             await loadServers();
           } else if (data.step === 'error') {
             progress.value.updateLastStep('error', data.message);
             progress.value.setError(data.message);
-            deploymentForm.value.resetForm();
+            deploymentForm.value?.resetForm();
           }
         }
       }
     }
   } catch (error) {
     progress.value.setError(error.message);
-    deploymentForm.value.resetForm();
+    deploymentForm.value?.resetForm();
   }
 }
 
@@ -261,9 +293,17 @@ async function confirmDelete() {
   const result = await api.deleteServer(serverToDelete.value);
   if (result.success) {
     await loadServers();
-    alert('Server deleted successfully');
+    toast.value.addToast({
+      type: 'success',
+      title: 'Server Deleted',
+      message: `${serverToDelete.value} has been destroyed successfully.`,
+    });
   } else {
-    alert('Failed to delete server: ' + result.error);
+    toast.value.addToast({
+      type: 'error',
+      title: 'Delete Failed',
+      message: result.error,
+    });
   }
 
   serverToDelete.value = '';
@@ -272,7 +312,11 @@ async function confirmDelete() {
 
 async function handleDeployApplication(data) {
   if (!lastDeploymentData.value) {
-    alert('No deployment data available');
+    toast.value.addToast({
+      type: 'error',
+      title: 'Error',
+      message: 'No deployment data available',
+    });
     progress.value.setApplicationDeploymentError();
     return;
   }
@@ -288,11 +332,19 @@ async function handleDeployApplication(data) {
     if (result.success) {
       progress.value.setApplicationDeploymentStarted(result.workflow_url);
     } else {
-      alert('Failed to start application deployment: ' + result.error);
+      toast.value.addToast({
+        type: 'error',
+        title: 'Deployment Failed',
+        message: result.error,
+      });
       progress.value.setApplicationDeploymentError();
     }
   } catch (error) {
-    alert('Error starting application deployment: ' + error.message);
+    toast.value.addToast({
+      type: 'error',
+      title: 'Error',
+      message: error.message,
+    });
     progress.value.setApplicationDeploymentError();
   }
 }
@@ -317,13 +369,27 @@ async function confirmDeploy() {
     });
 
     if (result.success) {
-      alert(`Application deployment started!\n\nServer: ${selectedServer.value.name}\nBranch: ${selectedBranch.value}\n\nView progress: ${result.workflow_url}`);
-      window.open(result.workflow_url, '_blank');
+      toast.value.addToast({
+        type: 'success',
+        title: 'Deployment Started',
+        message: `Deploying ${selectedBranch.value} to ${selectedServer.value.name}`,
+        link: result.workflow_url,
+        linkText: 'View workflow',
+        duration: 10000,
+      });
     } else {
-      alert('Failed to start application deployment: ' + result.error);
+      toast.value.addToast({
+        type: 'error',
+        title: 'Deployment Failed',
+        message: result.error,
+      });
     }
   } catch (error) {
-    alert('Error starting application deployment: ' + error.message);
+    toast.value.addToast({
+      type: 'error',
+      title: 'Error',
+      message: error.message,
+    });
   }
 }
 </script>
