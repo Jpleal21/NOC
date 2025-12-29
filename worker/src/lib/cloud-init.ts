@@ -75,7 +75,7 @@ runcmd:
 
   # Clone FlaggerLink Repository
   - echo "Cloning FlaggerLink repository..."
-  - su - flaggerlink -c "git clone -b ${branch} https://${githubToken}@github.com/owner/FlaggerLink.git /home/flaggerlink/FlaggerLink"
+  - su - flaggerlink -c "git clone -b ${branch} https://${githubToken}@github.com/RichardHorwath/FlaggerLink.git /home/flaggerlink/FlaggerLink"
 
   # Save Secrets
   - |
