@@ -74,8 +74,8 @@ runcmd:
   # Create Directory Structure
   # ========================================================================
   - echo "Creating directory structure..."
-  - mkdir -p /opt/flaggerlink/{api,texting,portal-api,scripts,secrets}
-  - mkdir -p /var/www/flaggerlink/{web,portal}
+  - mkdir -p /opt/flaggerlink/api /opt/flaggerlink/texting /opt/flaggerlink/portal-api /opt/flaggerlink/scripts /opt/flaggerlink/secrets
+  - mkdir -p /var/www/flaggerlink/web /var/www/flaggerlink/portal
   - mkdir -p /var/log/flaggerlink
   - mkdir -p /etc/ssl/cloudflare
 
