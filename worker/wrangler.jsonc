@@ -1,0 +1,28 @@
+{
+  // NOC Platform - Cloudflare Worker Configuration
+  "name": "noc-worker",
+  "main": "src/index.ts",
+  "compatibility_date": "2024-12-27",
+  "compatibility_flags": ["nodejs_compat"],
+  
+  // Development
+  "workers_dev": true,
+  
+  // Production routes
+  "routes": [
+    {
+      "pattern": "noc-api.flaggerlink.com/*",
+      "zone_name": "flaggerlink.com"
+    }
+  ],
+  
+  // Secret Store binding (FlaggerLink shared secret store)
+  "secrets": {
+    "bindings": [
+      {
+        "type": "secret_store",
+        "binding": "SECRETS"
+      }
+    ]
+  }
+}
