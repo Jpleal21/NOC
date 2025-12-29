@@ -20,7 +20,10 @@ export class DigitalOceanService {
   }
 
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
+    const url = `${this.baseUrl}${endpoint}`;
+    console.log('[DigitalOcean]', options?.method || 'GET', url);
+
+    const response = await fetch(url, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
@@ -29,8 +32,11 @@ export class DigitalOceanService {
       },
     });
 
+    console.log('[DigitalOcean] Response status:', response.status);
+
     if (!response.ok) {
       const error = await response.text();
+      console.error('[DigitalOcean] API error:', error);
       throw new Error(`DigitalOcean API error: ${response.status} - ${error}`);
     }
 
@@ -63,6 +69,10 @@ export class DigitalOceanService {
 
   // Create a new droplet
   async createDroplet(params: DropletCreateParams) {
+    console.log('[DigitalOcean] Creating droplet:', params.name);
+    console.log('[DigitalOcean] Region:', params.region, 'Size:', params.size);
+    console.log('[DigitalOcean] VPC UUID:', params.vpc_uuid);
+
     const response = await this.request<{ droplet: any }>('/droplets', {
       method: 'POST',
       body: JSON.stringify({
@@ -77,6 +87,8 @@ export class DigitalOceanService {
         ipv6: false,
       }),
     });
+
+    console.log('[DigitalOcean] Droplet created, ID:', response.droplet.id);
     return response.droplet;
   }
 

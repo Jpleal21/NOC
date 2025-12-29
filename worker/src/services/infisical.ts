@@ -32,10 +32,16 @@ export class InfisicalService {
   // Authenticate and get access token
   private async authenticate(): Promise<string> {
     if (this.accessToken) {
+      console.log('[Infisical] Using cached access token');
       return this.accessToken;
     }
 
-    const response = await fetch(`${this.baseUrl}/auth/universal-auth/login`, {
+    const authUrl = `${this.baseUrl}/auth/universal-auth/login`;
+    console.log('[Infisical] Authenticating to:', authUrl);
+    console.log('[Infisical] Client ID length:', this.auth.clientId?.length || 0);
+    console.log('[Infisical] Client Secret length:', this.auth.clientSecret?.length || 0);
+
+    const response = await fetch(authUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -44,38 +50,53 @@ export class InfisicalService {
       }),
     });
 
+    console.log('[Infisical] Auth response status:', response.status);
+    console.log('[Infisical] Auth response headers:', Object.fromEntries(response.headers.entries()));
+
     if (!response.ok) {
-      throw new Error(`Infisical auth failed: ${response.status}`);
+      const errorText = await response.text();
+      console.error('[Infisical] Auth failed:', errorText);
+      throw new Error(`Infisical auth failed: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
+    console.log('[Infisical] Auth successful, token received');
     this.accessToken = data.accessToken;
     return this.accessToken;
   }
 
   // Fetch secrets from Infisical
   async getSecrets(environment: string = 'prod'): Promise<InfisicalSecrets> {
+    console.log('[Infisical] Fetching secrets for environment:', environment);
+    console.log('[Infisical] Project ID:', this.projectId);
+
     const token = await this.authenticate();
 
-    const response = await fetch(
-      `${this.baseUrl}/secrets?workspaceId=${this.projectId}&environment=${environment}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      }
-    );
+    const secretsUrl = `${this.baseUrl}/secrets?workspaceId=${this.projectId}&environment=${environment}`;
+    console.log('[Infisical] Fetching secrets from:', secretsUrl);
+
+    const response = await fetch(secretsUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    console.log('[Infisical] Secrets fetch response status:', response.status);
 
     if (!response.ok) {
-      throw new Error(`Infisical secrets fetch failed: ${response.status}`);
+      const errorText = await response.text();
+      console.error('[Infisical] Secrets fetch failed:', errorText);
+      throw new Error(`Infisical secrets fetch failed: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
-    
+    console.log('[Infisical] Secrets received, count:', data.secrets?.length || 0);
+
     // Transform array of secrets to object
     const secrets: any = {};
     data.secrets.forEach((secret: any) => {
       secrets[secret.secretKey] = secret.secretValue;
+      console.log('[Infisical] Secret loaded:', secret.secretKey);
     });
 
     return {

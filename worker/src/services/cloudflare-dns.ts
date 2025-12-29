@@ -18,7 +18,10 @@ export class CloudflareDNSService {
   }
 
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
-    const response = await fetch(this.baseUrl + endpoint, {
+    const url = this.baseUrl + endpoint;
+    console.log('[Cloudflare DNS]', options?.method || 'GET', url);
+
+    const response = await fetch(url, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
@@ -27,13 +30,17 @@ export class CloudflareDNSService {
       },
     });
 
+    console.log('[Cloudflare DNS] Response status:', response.status);
+
     if (!response.ok) {
       const error = await response.text();
+      console.error('[Cloudflare DNS] API error:', error);
       throw new Error('Cloudflare API error: ' + response.status + ' - ' + error);
     }
 
     const data = await response.json();
     if (!data.success) {
+      console.error('[Cloudflare DNS] API returned errors:', data.errors);
       throw new Error('Cloudflare API error: ' + JSON.stringify(data.errors));
     }
 
@@ -56,13 +63,20 @@ export class CloudflareDNSService {
 
   // Create 3 DNS records for a server
   async createServerRecords(serverName: string, ipAddress: string, enableProxy: boolean) {
+    console.log('[Cloudflare DNS] Creating server records for:', serverName);
+    console.log('[Cloudflare DNS] IP address:', ipAddress, 'Proxy enabled:', enableProxy);
+
     const records = [
       { name: serverName + '.flaggerlink.com', content: ipAddress, proxied: enableProxy },
       { name: serverName + '-api.flaggerlink.com', content: ipAddress, proxied: false },
       { name: serverName + '-text-api.flaggerlink.com', content: ipAddress, proxied: false },
     ];
 
-    return Promise.all(records.map(record => this.createARecord(record)));
+    console.log('[Cloudflare DNS] Creating', records.length, 'DNS records');
+    const results = await Promise.all(records.map(record => this.createARecord(record)));
+    console.log('[Cloudflare DNS] All DNS records created successfully');
+
+    return results;
   }
 
   // List DNS records
