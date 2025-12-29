@@ -246,17 +246,41 @@ app.post('/api/deploy', async (c) => {
         });
         console.log('[NOC Worker] Droplet created, ID:', droplet.id);
 
-        // Step 3a: Assign reserved IP (if specified)
+        // Step 3a: Wait for droplet to become active (if using reserved IP or firewall)
+        if (reserved_ip || firewall_id) {
+          console.log('[NOC Worker] Step 3a: Waiting for droplet to become active');
+          await stream.write('data: ' + JSON.stringify({ step: 'active', message: 'Waiting for droplet to become active...' }) + '\n\n');
+
+          let dropletActive = false;
+          let attempts = 0;
+          while (!dropletActive && attempts < 60) {
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            const updated = await doService.getDroplet(droplet.id);
+            dropletActive = updated.status === 'active';
+            attempts++;
+            if (attempts % 5 === 0) {
+              console.log('[NOC Worker] Still waiting for active status... attempt', attempts);
+            }
+          }
+
+          if (!dropletActive) {
+            console.error('[NOC Worker] Droplet failed to become active after', attempts, 'attempts');
+            throw new Error('Droplet failed to become active');
+          }
+          console.log('[NOC Worker] Droplet is now active');
+        }
+
+        // Step 3b: Assign reserved IP (if specified)
         if (reserved_ip) {
-          console.log('[NOC Worker] Step 3a: Assign reserved IP');
+          console.log('[NOC Worker] Step 3b: Assign reserved IP');
           await stream.write('data: ' + JSON.stringify({ step: 'reserved_ip', message: 'Assigning reserved IP...' }) + '\n\n');
           await doService.assignReservedIP(reserved_ip, droplet.id);
           console.log('[NOC Worker] Reserved IP assigned:', reserved_ip);
         }
 
-        // Step 3b: Add to firewall (if specified)
+        // Step 3c: Add to firewall (if specified)
         if (firewall_id) {
-          console.log('[NOC Worker] Step 3b: Add to firewall');
+          console.log('[NOC Worker] Step 3c: Add to firewall');
           await stream.write('data: ' + JSON.stringify({ step: 'firewall', message: 'Adding to firewall...' }) + '\n\n');
           await doService.addDropletToFirewall(firewall_id, droplet.id);
           console.log('[NOC Worker] Added to firewall:', firewall_id);

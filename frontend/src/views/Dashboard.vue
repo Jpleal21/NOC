@@ -98,6 +98,9 @@ async function handleDeploy(formData) {
           } else if (data.step === 'droplet') {
             progress.value.updateLastStep('complete');
             progress.value.addStep('Creating DigitalOcean droplet', 'loading');
+          } else if (data.step === 'active') {
+            progress.value.updateLastStep('complete');
+            progress.value.addStep('Waiting for droplet to become active', 'loading');
           } else if (data.step === 'reserved_ip') {
             progress.value.updateLastStep('complete');
             progress.value.addStep('Assigning reserved IP address', 'loading');
