@@ -16,6 +16,8 @@ interface InfisicalSecrets {
   DATABASE_NAME: string;
   JWT_SECRET: string;
   ENCRYPTION_KEY: string;
+  CLOUDFLARE_ORIGIN_CERT: string;
+  CLOUDFLARE_ORIGIN_KEY: string;
 }
 
 export class InfisicalService {
@@ -110,6 +112,8 @@ export class InfisicalService {
       DATABASE_NAME: secrets.DATABASE_NAME || 'flaggerlink',
       JWT_SECRET: secrets.JWT_SECRET || '',
       ENCRYPTION_KEY: secrets.ENCRYPTION_KEY || '',
+      CLOUDFLARE_ORIGIN_CERT: secrets.CLOUDFLARE_ORIGIN_CERT || '',
+      CLOUDFLARE_ORIGIN_KEY: secrets.CLOUDFLARE_ORIGIN_KEY || '',
     };
   }
 }

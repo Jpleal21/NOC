@@ -101,6 +101,21 @@ runcmd:
   - chown -R flaggerlink:flaggerlink /var/log/flaggerlink
   - chown -R www-data:www-data /var/www/flaggerlink
 
+  # Install Cloudflare Origin Certificate
+  - mkdir -p /etc/ssl/cloudflare
+  - |
+    cat > /etc/ssl/cloudflare/origin.pem << 'CERTEOF'
+    ${secrets.CLOUDFLARE_ORIGIN_CERT}
+    CERTEOF
+  - |
+    cat > /etc/ssl/cloudflare/origin.key << 'KEYEOF'
+    ${secrets.CLOUDFLARE_ORIGIN_KEY}
+    KEYEOF
+  - chmod 644 /etc/ssl/cloudflare/origin.pem
+  - chmod 600 /etc/ssl/cloudflare/origin.key
+  - chown root:root /etc/ssl/cloudflare/origin.pem
+  - chown root:root /etc/ssl/cloudflare/origin.key
+
   # Configure Firewall
   - ufw --force enable
   - ufw allow 22/tcp
@@ -131,13 +146,27 @@ write_files:
       server {
           listen 80 default_server;
           listen [::]:80 default_server;
+          listen 443 ssl http2 default_server;
+          listen [::]:443 ssl http2 default_server;
+
+          # Cloudflare Origin Certificate
+          ssl_certificate /etc/ssl/cloudflare/origin.pem;
+          ssl_certificate_key /etc/ssl/cloudflare/origin.key;
+
+          # SSL Configuration
+          ssl_protocols TLSv1.2 TLSv1.3;
+          ssl_ciphers HIGH:!aNULL:!MD5;
+          ssl_prefer_server_ciphers on;
+
           server_name _;
           root /var/www/html;
           index index.html;
+
           location / {
               return 200 'FlaggerLink server is ready for deployment';
               add_header Content-Type text/plain;
           }
+
           location /health {
               return 200 'OK';
               add_header Content-Type text/plain;
