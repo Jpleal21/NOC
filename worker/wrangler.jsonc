@@ -8,11 +8,11 @@
   // Development
   "workers_dev": true,
   
-  // Production routes
+  // Production route - custom domain
   "routes": [
     {
-      "pattern": "noc-api.flaggerlink.com/*",
-      "zone_name": "flaggerlink.com"
+      "pattern": "noc-api.flaggerlink.com",
+      "custom_domain": true
     }
   ],
   
