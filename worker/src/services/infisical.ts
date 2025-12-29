@@ -19,7 +19,7 @@ interface InfisicalSecrets {
 }
 
 export class InfisicalService {
-  private baseUrl = 'https://app.infisical.com/api/v3';
+  private baseUrl = 'https://app.infisical.com/api/v1';
   private auth: InfisicalAuth;
   private projectId: string;
   private accessToken: string | null = null;
