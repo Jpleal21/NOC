@@ -84,6 +84,7 @@ app.get('/api/servers', async (c) => {
         region: d.region?.slug,
         size: d.size?.slug,
         created_at: d.created_at,
+        tags: d.tags || [], // Include tags for validation
       }))
     });
   } catch (error: any) {

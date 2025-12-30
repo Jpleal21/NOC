@@ -360,6 +360,17 @@ async function confirmDeploy() {
 
   if (!selectedServer.value) return;
 
+  // Validate server is NOC-managed
+  if (!selectedServer.value.tags || !selectedServer.value.tags.includes('noc-managed')) {
+    toast.value.addToast({
+      type: 'error',
+      title: 'Invalid Server',
+      message: `Cannot deploy to ${selectedServer.value.name} - server is not NOC-managed. Only servers provisioned through NOC can receive application deployments.`,
+      duration: 8000,
+    });
+    return;
+  }
+
   try {
     const result = await api.deployApplication({
       droplet_id: selectedServer.value.id,
