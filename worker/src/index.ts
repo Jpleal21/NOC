@@ -4,9 +4,11 @@ import { stream } from 'hono/streaming';
 import { DigitalOceanService } from './services/digitalocean';
 import { InfisicalService } from './services/infisical';
 import { CloudflareDNSService } from './services/cloudflare-dns';
+import { DatabaseService } from './services/database';
 import { renderCloudInit } from './lib/cloud-init';
 
 type Bindings = {
+  DB: D1Database;
   INFISICAL_CLIENT_ID: { get(): Promise<string> };
   INFISICAL_CLIENT_SECRET: { get(): Promise<string> };
   INFISICAL_PROJECT_ID: { get(): Promise<string> };
@@ -221,10 +223,23 @@ app.post('/api/deploy', async (c) => {
       { clientId: infisicalClientId, clientSecret: infisicalClientSecret },
       infisicalProjectId
     );
+    const db = new DatabaseService(c.env.DB);
     console.log('[NOC Worker] Services initialized');
+
+    // Create deployment record
+    console.log('[NOC Worker] Creating deployment record in database...');
+    const deploymentId = await db.createDeployment({
+      server_name,
+      region: droplet_region,
+      branch,
+      deployment_type: 'infrastructure',
+      status: 'in_progress',
+    });
+    console.log('[NOC Worker] Deployment record created with ID:', deploymentId);
 
     // Stream deployment progress
     return stream(c, async (stream) => {
+      const startTime = Date.now();
       try {
         // Step 1: Fetch secrets from Infisical
         console.log('[NOC Worker] Step 1: Fetch secrets from Infisical');
@@ -358,6 +373,15 @@ app.post('/api/deploy', async (c) => {
 
         // Step 6: Complete
         console.log('[NOC Worker] Deployment complete!');
+        const duration = Math.floor((Date.now() - startTime) / 1000); // seconds
+        await db.updateDeployment(deploymentId, {
+          status: 'success',
+          duration,
+          droplet_id: droplet.id,
+          ip_address: finalIP,
+        });
+        console.log('[NOC Worker] Deployment record updated with success');
+
         await stream.write('data: ' + JSON.stringify({
           step: 'complete',
           message: 'Deployment complete!',
@@ -368,6 +392,13 @@ app.post('/api/deploy', async (c) => {
 
       } catch (error: any) {
         console.error('[NOC Worker] Deployment error:', error);
+        const duration = Math.floor((Date.now() - startTime) / 1000);
+        await db.updateDeployment(deploymentId, {
+          status: 'failed',
+          duration,
+          error_message: error.message,
+        });
+        console.log('[NOC Worker] Deployment record updated with failure');
         await stream.write('data: ' + JSON.stringify({ step: 'error', message: error.message }) + '\n\n');
       }
     });
@@ -423,6 +454,7 @@ app.delete('/api/servers/:name', async (c) => {
 
 // Deploy application to provisioned server (triggers GitHub Actions)
 app.post('/api/deploy/application', async (c) => {
+  let deploymentId: number | null = null;
   try {
     console.log('[NOC Worker] POST /api/deploy/application');
     const body = await c.req.json();
@@ -440,6 +472,18 @@ app.post('/api/deploy/application', async (c) => {
       console.error('[NOC Worker] Missing required fields');
       return c.json({ success: false, error: 'Missing required fields' }, 400);
     }
+
+    // Create deployment record (status will remain 'in_progress' - GitHub Actions handles completion)
+    const db = new DatabaseService(c.env.DB);
+    deploymentId = await db.createDeployment({
+      server_name,
+      droplet_id,
+      ip_address: droplet_ip,
+      branch,
+      deployment_type: 'application',
+      status: 'in_progress',
+    });
+    console.log('[NOC Worker] Application deployment record created with ID:', deploymentId);
 
     // Get GitHub token
     const githubToken = await c.env.GITHUB_TOKEN.get();
@@ -502,6 +546,12 @@ app.post('/api/deploy/application', async (c) => {
       }
     }
 
+    // Update deployment record with workflow URL
+    await db.updateDeployment(deploymentId, {
+      workflow_url: workflowRunUrl,
+    });
+    console.log('[NOC Worker] Deployment record updated with workflow URL');
+
     return c.json({
       success: true,
       message: 'Application deployment started',
@@ -511,6 +561,174 @@ app.post('/api/deploy/application', async (c) => {
 
   } catch (error: any) {
     console.error('[NOC Worker] Deploy application error:', error);
+    // Mark deployment as failed
+    if (deploymentId) {
+      try {
+        const db = new DatabaseService(c.env.DB);
+        await db.updateDeployment(deploymentId, {
+          status: 'failed',
+          error_message: error.message,
+        });
+      } catch (dbError) {
+        console.error('[NOC Worker] Failed to update deployment record:', dbError);
+      }
+    }
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
+// ========================================
+// DEPLOYMENT HISTORY API
+// ========================================
+
+// Get all deployments with optional filtering
+app.get('/api/deployments', async (c) => {
+  try {
+    console.log('[NOC Worker] GET /api/deployments');
+    const db = new DatabaseService(c.env.DB);
+
+    const server_name = c.req.query('server_name');
+    const status = c.req.query('status');
+    const deployment_type = c.req.query('deployment_type');
+    const limit = c.req.query('limit') ? parseInt(c.req.query('limit')!) : 50;
+    const offset = c.req.query('offset') ? parseInt(c.req.query('offset')!) : 0;
+
+    const deployments = await db.getDeployments({
+      server_name,
+      status,
+      deployment_type,
+      limit,
+      offset,
+    });
+
+    console.log('[NOC Worker] Returning', deployments.length, 'deployments');
+    return c.json({ success: true, deployments });
+  } catch (error: any) {
+    console.error('[NOC Worker] Error fetching deployments:', error);
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
+// Get deployment statistics
+app.get('/api/deployments/stats', async (c) => {
+  try {
+    console.log('[NOC Worker] GET /api/deployments/stats');
+    const db = new DatabaseService(c.env.DB);
+    const stats = await db.getDeploymentStats();
+    console.log('[NOC Worker] Deployment stats:', stats);
+    return c.json({ success: true, stats });
+  } catch (error: any) {
+    console.error('[NOC Worker] Error fetching deployment stats:', error);
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
+// ========================================
+// SERVER TAGS API
+// ========================================
+
+// Get tags for a specific server
+app.get('/api/servers/:name/tags', async (c) => {
+  try {
+    const serverName = c.req.param('name');
+    console.log('[NOC Worker] GET /api/servers/:name/tags -', serverName);
+    const db = new DatabaseService(c.env.DB);
+    const tags = await db.getServerTags(serverName);
+    console.log('[NOC Worker] Server', serverName, 'has', tags.length, 'tags');
+    return c.json({ success: true, tags });
+  } catch (error: any) {
+    console.error('[NOC Worker] Error fetching server tags:', error);
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
+// Add tag to a server
+app.post('/api/servers/:name/tags', async (c) => {
+  try {
+    const serverName = c.req.param('name');
+    const { tag } = await c.req.json();
+
+    if (!tag) {
+      return c.json({ success: false, error: 'Tag is required' }, 400);
+    }
+
+    console.log('[NOC Worker] POST /api/servers/:name/tags -', serverName, '- tag:', tag);
+    const db = new DatabaseService(c.env.DB);
+    await db.addServerTag(serverName, tag);
+    console.log('[NOC Worker] Tag added successfully');
+    return c.json({ success: true, message: 'Tag added successfully' });
+  } catch (error: any) {
+    console.error('[NOC Worker] Error adding server tag:', error);
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
+// Remove tag from a server
+app.delete('/api/servers/:name/tags/:tag', async (c) => {
+  try {
+    const serverName = c.req.param('name');
+    const tag = c.req.param('tag');
+    console.log('[NOC Worker] DELETE /api/servers/:name/tags/:tag -', serverName, '- tag:', tag);
+    const db = new DatabaseService(c.env.DB);
+    await db.removeServerTag(serverName, tag);
+    console.log('[NOC Worker] Tag removed successfully');
+    return c.json({ success: true, message: 'Tag removed successfully' });
+  } catch (error: any) {
+    console.error('[NOC Worker] Error removing server tag:', error);
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
+// Get all unique tags
+app.get('/api/tags', async (c) => {
+  try {
+    console.log('[NOC Worker] GET /api/tags');
+    const db = new DatabaseService(c.env.DB);
+    const tags = await db.getAllTags();
+    console.log('[NOC Worker] Returning', tags.length, 'unique tags');
+    return c.json({ success: true, tags });
+  } catch (error: any) {
+    console.error('[NOC Worker] Error fetching tags:', error);
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
+// ========================================
+// WEBHOOK SETTINGS API
+// ========================================
+
+// Get webhook settings
+app.get('/api/settings/webhook', async (c) => {
+  try {
+    console.log('[NOC Worker] GET /api/settings/webhook');
+    const db = new DatabaseService(c.env.DB);
+    const settings = await db.getWebhookSettings();
+    console.log('[NOC Worker] Webhook settings retrieved');
+    return c.json({ success: true, settings });
+  } catch (error: any) {
+    console.error('[NOC Worker] Error fetching webhook settings:', error);
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
+// Update webhook settings
+app.put('/api/settings/webhook', async (c) => {
+  try {
+    console.log('[NOC Worker] PUT /api/settings/webhook');
+    const body = await c.req.json();
+    const { url, notify_on_success, notify_on_failure } = body;
+
+    const db = new DatabaseService(c.env.DB);
+    await db.updateWebhookSettings({
+      url: url || null,
+      notify_on_success,
+      notify_on_failure,
+    });
+
+    console.log('[NOC Worker] Webhook settings updated');
+    return c.json({ success: true, message: 'Webhook settings updated successfully' });
+  } catch (error: any) {
+    console.error('[NOC Worker] Error updating webhook settings:', error);
     return c.json({ success: false, error: error.message }, 500);
   }
 });

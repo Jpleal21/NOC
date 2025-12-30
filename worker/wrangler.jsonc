@@ -16,6 +16,15 @@
     }
   ],
   
+  // D1 Database binding
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "noc-platform",
+      "database_id": "TBD"
+    }
+  ],
+
   // Secret Store bindings (FlaggerLink shared secret store)
   "secrets_store_secrets": [
     { "binding": "INFISICAL_CLIENT_ID", "store_id": "04cf53bd04d84e1dbbc484d787ba1ff8", "secret_name": "INFISICAL_CLIENT_ID" },
