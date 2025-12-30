@@ -63,58 +63,6 @@
       </div>
     </div>
 
-    <!-- Notifications Section -->
-    <div class="bg-dark-card border border-dark-border rounded-lg shadow-sm">
-      <div class="px-6 py-4 border-b border-dark-border">
-        <h2 class="text-lg font-semibold text-white">Notifications</h2>
-        <p class="text-sm text-dark-muted mt-1">
-          Configure deployment notifications and alerts
-        </p>
-      </div>
-      <div class="px-6 py-4 space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-white mb-2">
-            Webhook URL (Slack/Discord)
-          </label>
-          <input
-            type="url"
-            :value="webhookUrl"
-            @input="$emit('update:webhook-url', $event.target.value)"
-            placeholder="https://hooks.slack.com/services/..."
-            class="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-white
-                   placeholder-dark-muted focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-          />
-          <p class="text-xs text-dark-muted mt-1">
-            Receive deployment notifications in Slack or Discord
-          </p>
-        </div>
-        <div class="flex items-center space-x-2">
-          <input
-            type="checkbox"
-            id="notify-success"
-            :checked="notifyOnSuccess"
-            @change="$emit('update:notify-success', $event.target.checked)"
-            class="h-4 w-4 text-primary-500 focus:ring-primary-500 border-dark-border rounded bg-dark-bg"
-          />
-          <label for="notify-success" class="text-sm text-white">
-            Notify on successful deployments
-          </label>
-        </div>
-        <div class="flex items-center space-x-2">
-          <input
-            type="checkbox"
-            id="notify-failure"
-            :checked="notifyOnFailure"
-            @change="$emit('update:notify-failure', $event.target.checked)"
-            class="h-4 w-4 text-primary-500 focus:ring-primary-500 border-dark-border rounded bg-dark-bg"
-          />
-          <label for="notify-failure" class="text-sm text-white">
-            Notify on failed deployments
-          </label>
-        </div>
-      </div>
-    </div>
-
     <!-- API Status Section -->
     <div class="bg-dark-card border border-dark-border rounded-lg shadow-sm">
       <div class="px-6 py-4 border-b border-dark-border">
@@ -153,19 +101,7 @@ defineProps({
     type: Boolean,
     default: true,
   },
-  webhookUrl: {
-    type: String,
-    default: '',
-  },
-  notifyOnSuccess: {
-    type: Boolean,
-    default: false,
-  },
-  notifyOnFailure: {
-    type: Boolean,
-    default: true,
-  },
 });
 
-defineEmits(['toggle-dark-mode', 'update:webhook-url', 'update:notify-success', 'update:notify-failure']);
+defineEmits(['toggle-dark-mode']);
 </script>

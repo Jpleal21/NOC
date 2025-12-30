@@ -37,20 +37,6 @@ CREATE TABLE IF NOT EXISTS server_tags (
 
 CREATE INDEX IF NOT EXISTS idx_server_tags_tag ON server_tags(tag);
 
--- Webhook Settings
--- Global settings for webhook notifications
-CREATE TABLE IF NOT EXISTS webhook_settings (
-  id INTEGER PRIMARY KEY CHECK (id = 1), -- Enforce single row
-  url TEXT,
-  notify_on_success INTEGER DEFAULT 0, -- Boolean: 0 = false, 1 = true
-  notify_on_failure INTEGER DEFAULT 1,
-  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
--- Insert default settings
-INSERT OR IGNORE INTO webhook_settings (id, url, notify_on_success, notify_on_failure)
-VALUES (1, NULL, 0, 1);
-
 -- Deployment Events (Optional - for detailed step tracking)
 -- Stores individual steps within a deployment for debugging
 CREATE TABLE IF NOT EXISTS deployment_events (

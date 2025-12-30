@@ -1,5 +1,5 @@
 // Database Service - D1 Operations for NOC Platform
-// Handles deployment history, server tags, and webhook settings
+// Handles deployment history and server tags
 
 export interface Deployment {
   id?: number;
@@ -22,14 +22,6 @@ export interface ServerTag {
   server_name: string;
   tag: string;
   created_at?: string;
-}
-
-export interface WebhookSettings {
-  id: number;
-  url: string | null;
-  notify_on_success: boolean;
-  notify_on_failure: boolean;
-  updated_at?: string;
 }
 
 export class DatabaseService {
@@ -254,71 +246,5 @@ export class DatabaseService {
       .all<{ tag: string }>();
 
     return (result.results || []).map(r => r.tag);
-  }
-
-  // ========================================
-  // WEBHOOK SETTINGS
-  // ========================================
-
-  /**
-   * Get webhook settings
-   */
-  async getWebhookSettings(): Promise<WebhookSettings> {
-    const result = await this.db
-      .prepare('SELECT * FROM webhook_settings WHERE id = 1')
-      .first<any>();
-
-    if (!result) {
-      // Return default settings if not found
-      return {
-        id: 1,
-        url: null,
-        notify_on_success: false,
-        notify_on_failure: true,
-      };
-    }
-
-    return {
-      id: result.id,
-      url: result.url,
-      notify_on_success: Boolean(result.notify_on_success),
-      notify_on_failure: Boolean(result.notify_on_failure),
-      updated_at: result.updated_at,
-    };
-  }
-
-  /**
-   * Update webhook settings
-   */
-  async updateWebhookSettings(settings: {
-    url?: string | null;
-    notify_on_success?: boolean;
-    notify_on_failure?: boolean;
-  }): Promise<void> {
-    const fields: string[] = [];
-    const values: any[] = [];
-
-    if (settings.url !== undefined) {
-      fields.push('url = ?');
-      values.push(settings.url);
-    }
-    if (settings.notify_on_success !== undefined) {
-      fields.push('notify_on_success = ?');
-      values.push(settings.notify_on_success ? 1 : 0);
-    }
-    if (settings.notify_on_failure !== undefined) {
-      fields.push('notify_on_failure = ?');
-      values.push(settings.notify_on_failure ? 1 : 0);
-    }
-
-    if (fields.length === 0) return;
-
-    fields.push("updated_at = datetime('now')");
-    values.push(1); // WHERE id = 1
-
-    await this.db
-      .prepare(`UPDATE webhook_settings SET ${fields.join(', ')} WHERE id = ?`)
-      .bind(...values)
-      .run();
   }
 }

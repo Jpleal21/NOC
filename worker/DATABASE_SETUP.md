@@ -7,7 +7,6 @@ This document explains how to set up the D1 database for the NOC Platform.
 The NOC Platform uses Cloudflare D1 (SQLite) to store:
 - **Deployment History**: All infrastructure and application deployments
 - **Server Tags**: Custom labels for organizing servers
-- **Webhook Settings**: Slack/Discord notification configuration
 
 ## Database Setup
 
@@ -67,7 +66,6 @@ npx wrangler d1 execute noc-platform --command="SELECT name FROM sqlite_master W
 You should see:
 - `deployments`
 - `server_tags`
-- `webhook_settings`
 - `deployment_events`
 
 ## Database Schema
@@ -102,17 +100,6 @@ Many-to-many relationship between servers and tags.
 | created_at | TEXT | ISO timestamp when tag was added |
 
 **Primary Key**: (server_name, tag)
-
-### webhook_settings Table
-Global settings for deployment notifications.
-
-| Column | Type | Description |
-|--------|------|-------------|
-| id | INTEGER | Always 1 (enforced single row) |
-| url | TEXT | Webhook URL (Slack/Discord) |
-| notify_on_success | INTEGER | 0 = false, 1 = true |
-| notify_on_failure | INTEGER | 0 = false, 1 = true |
-| updated_at | TEXT | ISO timestamp of last update |
 
 ### deployment_events Table (Optional)
 Detailed step tracking for debugging deployments.
@@ -155,12 +142,6 @@ npx wrangler d1 execute noc-platform --command="SELECT DISTINCT tag FROM server_
 npx wrangler d1 execute noc-platform --command="SELECT server_name FROM server_tags WHERE tag = 'production'"
 ```
 
-### Query Webhook Settings
-
-```bash
-npx wrangler d1 execute noc-platform --command="SELECT * FROM webhook_settings"
-```
-
 ## Development Workflow
 
 ### Local Development
@@ -195,10 +176,6 @@ After deployment, the following endpoints are available:
 - `POST /api/servers/:name/tags` - Add a tag to a server
 - `DELETE /api/servers/:name/tags/:tag` - Remove a tag from a server
 - `GET /api/tags` - Get all unique tags
-
-### Webhook Settings
-- `GET /api/settings/webhook` - Get webhook settings
-- `PUT /api/settings/webhook` - Update webhook settings
 
 ## Troubleshooting
 

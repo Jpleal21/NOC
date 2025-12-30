@@ -693,44 +693,4 @@ app.get('/api/tags', async (c) => {
   }
 });
 
-// ========================================
-// WEBHOOK SETTINGS API
-// ========================================
-
-// Get webhook settings
-app.get('/api/settings/webhook', async (c) => {
-  try {
-    console.log('[NOC Worker] GET /api/settings/webhook');
-    const db = new DatabaseService(c.env.DB);
-    const settings = await db.getWebhookSettings();
-    console.log('[NOC Worker] Webhook settings retrieved');
-    return c.json({ success: true, settings });
-  } catch (error: any) {
-    console.error('[NOC Worker] Error fetching webhook settings:', error);
-    return c.json({ success: false, error: error.message }, 500);
-  }
-});
-
-// Update webhook settings
-app.put('/api/settings/webhook', async (c) => {
-  try {
-    console.log('[NOC Worker] PUT /api/settings/webhook');
-    const body = await c.req.json();
-    const { url, notify_on_success, notify_on_failure } = body;
-
-    const db = new DatabaseService(c.env.DB);
-    await db.updateWebhookSettings({
-      url: url || null,
-      notify_on_success,
-      notify_on_failure,
-    });
-
-    console.log('[NOC Worker] Webhook settings updated');
-    return c.json({ success: true, message: 'Webhook settings updated successfully' });
-  } catch (error: any) {
-    console.error('[NOC Worker] Error updating webhook settings:', error);
-    return c.json({ success: false, error: error.message }, 500);
-  }
-});
-
 export default app;

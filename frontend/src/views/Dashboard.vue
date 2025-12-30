@@ -84,13 +84,7 @@
       <SettingsTab
         v-if="activeTab === 'settings'"
         :dark-mode="darkMode"
-        :webhook-url="webhookUrl"
-        :notify-on-success="notifyOnSuccess"
-        :notify-on-failure="notifyOnFailure"
         @toggle-dark-mode="toggleDarkMode"
-        @update:webhook-url="webhookUrl = $event"
-        @update:notify-success="notifyOnSuccess = $event"
-        @update:notify-failure="notifyOnFailure = $event"
       />
     </main>
 
@@ -273,14 +267,9 @@ const deleteConfirmation = ref('');
 
 // Settings
 const darkMode = ref(true);
-const webhookUrl = ref('');
-const notifyOnSuccess = ref(false);
-const notifyOnFailure = ref(true);
-
 onMounted(() => {
   loadServers();
   loadDarkMode();
-  loadSettings();
 });
 
 function loadDarkMode() {
@@ -291,16 +280,6 @@ function loadDarkMode() {
 function toggleDarkMode() {
   darkMode.value = !darkMode.value;
   localStorage.setItem('noc-dark-mode', darkMode.value.toString());
-}
-
-function loadSettings() {
-  const saved = localStorage.getItem('noc-settings');
-  if (saved) {
-    const settings = JSON.parse(saved);
-    webhookUrl.value = settings.webhookUrl || '';
-    notifyOnSuccess.value = settings.notifyOnSuccess || false;
-    notifyOnFailure.value = settings.notifyOnFailure !== false; // Default true
-  }
 }
 
 async function loadServers() {
