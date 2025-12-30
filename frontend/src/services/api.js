@@ -1,20 +1,32 @@
 // NOC Platform API Client
 // Communicates with Worker API
 
-const API_BASE_URL = import.meta.env.DEV 
+const API_BASE_URL = import.meta.env.DEV
   ? '/api' // Proxied to Worker dev server in dev mode
   : 'https://noc-api.flaggerlink.com';
 
 class ApiClient {
+  // Get auth headers with service token credentials
+  getAuthHeaders() {
+    return {
+      'Content-Type': 'application/json',
+      // Service token authentication (Cloudflare Access)
+      'CF-Access-Client-Id': import.meta.env.VITE_CF_ACCESS_CLIENT_ID || '',
+      'CF-Access-Client-Secret': import.meta.env.VITE_CF_ACCESS_CLIENT_SECRET || '',
+    };
+  }
+
   async get(endpoint) {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`);
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      headers: this.getAuthHeaders(),
+    });
     return response.json();
   }
 
   async post(endpoint, data) {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: this.getAuthHeaders(),
       body: JSON.stringify(data),
     });
     return response.json();
@@ -23,6 +35,7 @@ class ApiClient {
   async delete(endpoint) {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'DELETE',
+      headers: this.getAuthHeaders(),
     });
     return response.json();
   }
@@ -71,7 +84,7 @@ class ApiClient {
   deployServer(data) {
     return fetch(`${API_BASE_URL}/api/deploy`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: this.getAuthHeaders(),
       body: JSON.stringify(data),
     });
   }
