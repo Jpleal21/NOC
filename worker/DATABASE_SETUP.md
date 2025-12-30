@@ -56,8 +56,11 @@ npx wrangler d1 execute noc-platform --file=schema.sql
 If you have an existing database, apply migrations to update the schema:
 
 ```bash
-# Apply migration to remove webhook_settings table
-npx wrangler d1 execute noc-platform --file=migrations/001_remove_webhook_settings.sql
+# Apply pending migrations (local)
+npx wrangler d1 migrations apply noc-platform
+
+# Apply pending migrations (production)
+npx wrangler d1 migrations apply noc-platform --remote
 ```
 
 ### 5. Verify the Database
