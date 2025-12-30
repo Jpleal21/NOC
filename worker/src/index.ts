@@ -20,9 +20,16 @@ const app = new Hono<{ Bindings: Bindings }>();
 
 // CORS for frontend
 app.use('/*', cors({
-  origin: ['https://noc.flaggerlink.com', 'http://localhost:5173'],
+  origin: (origin) => {
+    // Allow localhost for development
+    if (origin.startsWith('http://localhost:')) return origin;
+    // Allow all FlaggerLink subdomains
+    if (origin.endsWith('.flaggerlink.com')) return origin;
+    return 'https://noc.flaggerlink.com'; // fallback
+  },
   allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization'],
+  allowHeaders: ['Content-Type', 'Authorization', 'CF-Access-Client-Id', 'CF-Access-Client-Secret'],
+  credentials: true,
 }));
 
 // Health check
