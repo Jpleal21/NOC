@@ -178,7 +178,8 @@ app.post('/api/deploy', async (c) => {
       ssh_keys,
       firewall_id,
       database_id,
-      enable_backups
+      enable_backups,
+      tags
     } = body;
 
     console.log('[NOC Worker] Deployment request:', {
@@ -370,6 +371,16 @@ app.post('/api/deploy', async (c) => {
         await stream.write('data: ' + JSON.stringify({ step: 'dns', message: 'Creating DNS records...' }) + '\n\n');
         await dnsService.createServerRecords(server_name, finalIP, enable_cloudflare_proxy || false);
         console.log('[NOC Worker] DNS records created');
+
+        // Step 5a: Add tags if provided
+        if (tags && tags.length > 0) {
+          console.log('[NOC Worker] Adding tags to server:', tags);
+          await stream.write('data: ' + JSON.stringify({ step: 'tags', message: `Adding ${tags.length} tag(s)...` }) + '\n\n');
+          for (const tag of tags) {
+            await db.addServerTag(server_name, tag);
+          }
+          console.log('[NOC Worker] Tags added successfully');
+        }
 
         // Step 6: Complete
         console.log('[NOC Worker] Deployment complete!');
