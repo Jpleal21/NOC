@@ -44,6 +44,9 @@
               Name
             </th>
             <th class="px-4 py-3 text-left text-xs font-medium text-dark-muted uppercase tracking-wider">
+              Tags
+            </th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-dark-muted uppercase tracking-wider">
               Status
             </th>
             <th class="px-4 py-3 text-left text-xs font-medium text-dark-muted uppercase tracking-wider">
@@ -67,6 +70,26 @@
           <tr v-for="server in servers" :key="server.id" class="hover:bg-dark-hover transition-colors">
             <td class="px-4 py-3 text-sm font-medium text-white">
               {{ server.name }}
+            </td>
+            <td class="px-4 py-3 text-sm">
+              <div class="flex items-center space-x-1">
+                <span
+                  v-for="tag in (server.tags || [])"
+                  :key="tag"
+                  class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-500/20 text-blue-400"
+                >
+                  {{ tag }}
+                </span>
+                <button
+                  @click="$emit('manage-tags', server)"
+                  class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium text-dark-muted hover:text-primary-400 hover:bg-dark-hover transition-colors"
+                  title="Manage tags"
+                >
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                </button>
+              </div>
             </td>
             <td class="px-4 py-3 text-sm">
               <span :class="getStatusClass(server.status)" class="status-badge">
@@ -119,7 +142,7 @@ defineProps({
   }
 });
 
-defineEmits(['refresh', 'delete', 'deploy']);
+defineEmits(['refresh', 'delete', 'deploy', 'manage-tags']);
 
 function getStatusClass(status) {
   const classes = {

@@ -7,6 +7,7 @@
       @refresh="$emit('refresh')"
       @delete="$emit('delete', $event)"
       @deploy="$emit('deploy', $event)"
+      @manage-tags="$emit('manage-tags', $event)"
     />
   </div>
 </template>
@@ -19,5 +20,5 @@ defineProps({
   loading: Boolean,
 });
 
-defineEmits(['refresh', 'delete', 'deploy']);
+defineEmits(['refresh', 'delete', 'deploy', 'manage-tags']);
 </script>

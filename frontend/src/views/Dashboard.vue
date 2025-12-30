@@ -65,6 +65,7 @@
         @refresh="loadServers"
         @delete="handleDelete"
         @deploy="handleDeployToServer"
+        @manage-tags="handleManageTags"
       />
 
       <DeploymentsTab
@@ -197,6 +198,14 @@
         </div>
       </div>
     </div>
+
+    <!-- Tags Management Modal -->
+    <TagsModal
+      v-if="showTagsModal"
+      :server="selectedServerForTags"
+      @close="showTagsModal = false"
+      @tags-updated="handleTagsUpdated"
+    />
   </div>
 </template>
 
@@ -211,6 +220,7 @@ import ServersTab from '../components/tabs/ServersTab.vue';
 import DeploymentsTab from '../components/tabs/DeploymentsTab.vue';
 import DNSTab from '../components/tabs/DNSTab.vue';
 import SettingsTab from '../components/tabs/SettingsTab.vue';
+import TagsModal from '../components/TagsModal.vue';
 
 // Tab definitions
 const tabs = ref([
@@ -265,10 +275,15 @@ const showDeleteModal = ref(false);
 const serverToDelete = ref('');
 const deleteConfirmation = ref('');
 
+// Tags modal
+const showTagsModal = ref(false);
+const selectedServerForTags = ref(null);
+
 // Settings
 const darkMode = ref(true);
 onMounted(() => {
   loadServers();
+  loadDeployments();
   loadDarkMode();
 });
 
@@ -286,20 +301,33 @@ async function loadServers() {
   loadingServers.value = true;
   const result = await api.getServers();
   if (result.success) {
-    servers.value = result.servers;
-    tabs.value[0].count = result.servers.length;
+    // Load tags for each server
+    const serversWithTags = await Promise.all(
+      result.servers.map(async (server) => {
+        const tagsResult = await api.getServerTags(server.name);
+        return {
+          ...server,
+          tags: tagsResult.success ? tagsResult.tags : [],
+        };
+      })
+    );
+    servers.value = serversWithTags;
+    tabs.value[0].count = serversWithTags.length;
   }
   loadingServers.value = false;
 }
 
 async function loadDeployments() {
   loadingDeployments.value = true;
-  // TODO: Implement API call to fetch deployment history
-  // For now, placeholder data
-  setTimeout(() => {
-    deployments.value = [];
-    loadingDeployments.value = false;
-  }, 500);
+  const result = await api.getDeployments({ limit: 50 });
+  if (result.success) {
+    deployments.value = result.deployments.map(d => ({
+      ...d,
+      timestamp: d.created_at,
+      duration: d.duration ? `${d.duration}s` : null,
+    }));
+  }
+  loadingDeployments.value = false;
 }
 
 async function loadDNS() {
@@ -429,6 +457,19 @@ async function confirmDelete() {
 
   serverToDelete.value = '';
   deleteConfirmation.value = '';
+}
+
+function handleManageTags(server) {
+  selectedServerForTags.value = server;
+  showTagsModal.value = true;
+}
+
+function handleTagsUpdated({ server, tags }) {
+  // Update the server's tags in the local servers array
+  const serverIndex = servers.value.findIndex(s => s.name === server);
+  if (serverIndex !== -1) {
+    servers.value[serverIndex].tags = tags;
+  }
 }
 
 async function handleDeployApplication(data) {

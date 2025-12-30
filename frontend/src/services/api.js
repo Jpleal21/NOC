@@ -93,6 +93,52 @@ class ApiClient {
   async deployApplication(data) {
     return this.post('/api/deploy/application', data);
   }
+
+  // ========================================
+  // DEPLOYMENTS
+  // ========================================
+
+  // Get deployment history with optional filters
+  async getDeployments(filters = {}) {
+    const params = new URLSearchParams();
+    if (filters.server_name) params.append('server_name', filters.server_name);
+    if (filters.status) params.append('status', filters.status);
+    if (filters.deployment_type) params.append('deployment_type', filters.deployment_type);
+    if (filters.limit) params.append('limit', filters.limit);
+    if (filters.offset) params.append('offset', filters.offset);
+
+    const query = params.toString();
+    return this.get(`/api/deployments${query ? '?' + query : ''}`);
+  }
+
+  // Get deployment statistics
+  async getDeploymentStats() {
+    return this.get('/api/deployments/stats');
+  }
+
+  // ========================================
+  // SERVER TAGS
+  // ========================================
+
+  // Get tags for a specific server
+  async getServerTags(serverName) {
+    return this.get(`/api/servers/${serverName}/tags`);
+  }
+
+  // Add a tag to a server
+  async addServerTag(serverName, tag) {
+    return this.post(`/api/servers/${serverName}/tags`, { tag });
+  }
+
+  // Remove a tag from a server
+  async removeServerTag(serverName, tag) {
+    return this.delete(`/api/servers/${serverName}/tags/${tag}`);
+  }
+
+  // Get all unique tags across all servers
+  async getAllTags() {
+    return this.get('/api/tags');
+  }
 }
 
 export default new ApiClient();
