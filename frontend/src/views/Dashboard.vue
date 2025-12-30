@@ -17,16 +17,32 @@
             </p>
           </div>
         </div>
-        <button
-          @click="showDeployModal = true"
-          class="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white font-medium rounded-lg
-                 transition-colors flex items-center space-x-2"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-          </svg>
-          <span>Deploy New Server</span>
-        </button>
+        <div class="flex items-center space-x-3">
+          <!-- Dark Mode Toggle (Quick Access) -->
+          <button
+            @click="toggleDarkMode"
+            class="p-2 text-dark-muted hover:text-white hover:bg-dark-hover rounded-lg transition-colors"
+            title="Toggle dark mode"
+          >
+            <svg v-if="darkMode" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
+            </svg>
+            <svg v-else class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd" />
+            </svg>
+          </button>
+          <!-- Deploy Button -->
+          <button
+            @click="showDeployModal = true"
+            class="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white font-medium rounded-lg
+                   transition-colors flex items-center space-x-2"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            <span>Deploy New Server</span>
+          </button>
+        </div>
       </div>
     </header>
 
@@ -38,13 +54,43 @@
         class="mb-6"
       />
 
-      <!-- Server List (Full width) -->
-      <ServerList
+      <!-- Tab Navigation -->
+      <Tabs :tabs="tabs" :active-tab="activeTab" @change="activeTab = $event" class="mb-6" />
+
+      <!-- Tab Content -->
+      <ServersTab
+        v-if="activeTab === 'servers'"
         :servers="servers"
         :loading="loadingServers"
         @refresh="loadServers"
         @delete="handleDelete"
         @deploy="handleDeployToServer"
+      />
+
+      <DeploymentsTab
+        v-if="activeTab === 'deployments'"
+        :deployments="deployments"
+        :loading="loadingDeployments"
+        @refresh="loadDeployments"
+      />
+
+      <DNSTab
+        v-if="activeTab === 'dns'"
+        :records="dnsRecords"
+        :loading="loadingDNS"
+        @refresh="loadDNS"
+      />
+
+      <SettingsTab
+        v-if="activeTab === 'settings'"
+        :dark-mode="darkMode"
+        :webhook-url="webhookUrl"
+        :notify-on-success="notifyOnSuccess"
+        :notify-on-failure="notifyOnFailure"
+        @toggle-dark-mode="toggleDarkMode"
+        @update:webhook-url="webhookUrl = $event"
+        @update:notify-success="notifyOnSuccess = $event"
+        @update:notify-failure="notifyOnFailure = $event"
       />
     </main>
 
@@ -161,15 +207,58 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, h } from 'vue';
 import api from '../services/api';
 import DeploymentForm from '../components/DeploymentForm.vue';
-import ServerList from '../components/ServerList.vue';
 import DeploymentProgress from '../components/DeploymentProgress.vue';
 import Toast from '../components/Toast.vue';
+import Tabs from '../components/Tabs.vue';
+import ServersTab from '../components/tabs/ServersTab.vue';
+import DeploymentsTab from '../components/tabs/DeploymentsTab.vue';
+import DNSTab from '../components/tabs/DNSTab.vue';
+import SettingsTab from '../components/tabs/SettingsTab.vue';
 
+// Tab definitions
+const tabs = ref([
+  {
+    id: 'servers',
+    name: 'Servers',
+    count: 0,
+    icon: () => h('svg', { class: 'w-5 h-5', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' }, [
+      h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01' })
+    ]),
+  },
+  {
+    id: 'deployments',
+    name: 'Deployments',
+    icon: () => h('svg', { class: 'w-5 h-5', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' }, [
+      h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' })
+    ]),
+  },
+  {
+    id: 'dns',
+    name: 'DNS',
+    icon: () => h('svg', { class: 'w-5 h-5', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' }, [
+      h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9' })
+    ]),
+  },
+  {
+    id: 'settings',
+    name: 'Settings',
+    icon: () => h('svg', { class: 'w-5 h-5', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' }, [
+      h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z' }),
+      h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M15 12a3 3 0 11-6 0 3 3 0 016 0z' })
+    ]),
+  },
+]);
+
+const activeTab = ref('servers');
 const servers = ref([]);
+const deployments = ref([]);
+const dnsRecords = ref([]);
 const loadingServers = ref(false);
+const loadingDeployments = ref(false);
+const loadingDNS = ref(false);
 const deploymentForm = ref(null);
 const progress = ref(null);
 const toast = ref(null);
@@ -182,17 +271,70 @@ const showDeleteModal = ref(false);
 const serverToDelete = ref('');
 const deleteConfirmation = ref('');
 
+// Settings
+const darkMode = ref(true);
+const webhookUrl = ref('');
+const notifyOnSuccess = ref(false);
+const notifyOnFailure = ref(true);
+
 onMounted(() => {
   loadServers();
+  loadDarkMode();
+  loadSettings();
 });
+
+function loadDarkMode() {
+  const saved = localStorage.getItem('noc-dark-mode');
+  darkMode.value = saved !== 'false'; // Default to true
+}
+
+function toggleDarkMode() {
+  darkMode.value = !darkMode.value;
+  localStorage.setItem('noc-dark-mode', darkMode.value.toString());
+}
+
+function loadSettings() {
+  const saved = localStorage.getItem('noc-settings');
+  if (saved) {
+    const settings = JSON.parse(saved);
+    webhookUrl.value = settings.webhookUrl || '';
+    notifyOnSuccess.value = settings.notifyOnSuccess || false;
+    notifyOnFailure.value = settings.notifyOnFailure !== false; // Default true
+  }
+}
 
 async function loadServers() {
   loadingServers.value = true;
   const result = await api.getServers();
   if (result.success) {
     servers.value = result.servers;
+    tabs.value[0].count = result.servers.length;
   }
   loadingServers.value = false;
+}
+
+async function loadDeployments() {
+  loadingDeployments.value = true;
+  // TODO: Implement API call to fetch deployment history
+  // For now, placeholder data
+  setTimeout(() => {
+    deployments.value = [];
+    loadingDeployments.value = false;
+  }, 500);
+}
+
+async function loadDNS() {
+  loadingDNS.value = true;
+  // TODO: Implement API call to fetch DNS records
+  // For now, generate from servers
+  setTimeout(() => {
+    dnsRecords.value = servers.value.flatMap(server => [
+      { id: `${server.name}-1`, server_name: server.name, name: `${server.name}.flaggerlink.com`, content: server.ip_address, proxied: true },
+      { id: `${server.name}-2`, server_name: server.name, name: `${server.name}-api.flaggerlink.com`, content: server.ip_address, proxied: false },
+      { id: `${server.name}-3`, server_name: server.name, name: `${server.name}-text-api.flaggerlink.com`, content: server.ip_address, proxied: false },
+    ]);
+    loadingDNS.value = false;
+  }, 500);
 }
 
 async function handleDeploy(formData) {
