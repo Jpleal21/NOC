@@ -1,9 +1,23 @@
 <template>
   <div class="bg-dark-card border border-dark-border rounded-lg shadow-lg">
     <div class="flex justify-between items-center p-4 border-b border-dark-border">
-      <h2 class="text-xl font-semibold text-white">
-        Deployed Servers
-      </h2>
+      <div class="flex items-center space-x-3">
+        <h2 class="text-xl font-semibold text-white">
+          Deployed Servers
+        </h2>
+        <a
+          href="https://github.com/RichardHorwath/FlaggerLink/actions/workflows/noc-deploy-application.yml"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="hover:opacity-80 transition-opacity"
+        >
+          <img
+            src="https://github.com/RichardHorwath/FlaggerLink/actions/workflows/noc-deploy-application.yml/badge.svg"
+            alt="NOC - Deploy Application to Provisioned Server"
+            class="h-5"
+          />
+        </a>
+      </div>
       <button
         @click="$emit('refresh')"
         class="px-3 py-1.5 text-sm bg-dark-hover hover:bg-dark-border text-dark-muted
