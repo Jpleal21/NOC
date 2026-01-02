@@ -93,7 +93,7 @@ runcmd:
   # ========================================================================
   # Create Directory Structure (Conditional based on deployment profile)
   # ========================================================================
-  - echo "Creating directory structure for profile: \${DEPLOYMENT_PROFILE}..."
+  - echo "Creating directory structure for profile \${DEPLOYMENT_PROFILE}"
 
   # ALWAYS create these (Main API, Texting Service, Web App, common directories)
   - mkdir -p /opt/flaggerlink/api
@@ -288,12 +288,12 @@ export async function renderCloudInit(params: CloudInitParams): Promise<string> 
 
   // Replace all occurrences of template variables
   rendered = rendered.replace(/\$\{REDIS_PASSWORD\}/g, secrets.REDIS_PASSWORD);
-  rendered = rendered.replace(/\$\{RABBITMQ_USER\}/g, secrets.RABBITMQ_USER);
+  rendered = rendered.replace(/\$\{RABBITMQ_USER\}/g, secrets.RABBITMQ_USERNAME);
   rendered = rendered.replace(/\$\{RABBITMQ_PASSWORD\}/g, secrets.RABBITMQ_PASSWORD);
-  rendered = rendered.replace(/\$\{DATABASE_USER\}/g, secrets.DATABASE_USER);
-  rendered = rendered.replace(/\$\{DATABASE_PASSWORD\}/g, secrets.DATABASE_PASSWORD);
-  rendered = rendered.replace(/\$\{DATABASE_HOST\}/g, secrets.DATABASE_HOST);
-  rendered = rendered.replace(/\$\{DATABASE_NAME\}/g, secrets.DATABASE_NAME);
+  rendered = rendered.replace(/\$\{DATABASE_USER\}/g, secrets.MYSQL_USERNAME);
+  rendered = rendered.replace(/\$\{DATABASE_PASSWORD\}/g, secrets.MYSQL_PASSWORD);
+  rendered = rendered.replace(/\$\{DATABASE_HOST\}/g, secrets.MYSQL_HOST);
+  rendered = rendered.replace(/\$\{DATABASE_NAME\}/g, secrets.MYSQL_DATABASE);
   rendered = rendered.replace(/\$\{JWT_SECRET\}/g, secrets.JWT_SECRET);
   rendered = rendered.replace(/\$\{ENCRYPTION_KEY\}/g, secrets.ENCRYPTION_KEY);
   rendered = rendered.replace(/\$\{GITHUB_TOKEN\}/g, githubToken);
