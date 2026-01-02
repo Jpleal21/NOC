@@ -81,10 +81,39 @@ export class InfisicalService {
   private auth: InfisicalAuth;
   private projectId: string;
   private accessToken: string | null = null;
+  private defaultTimeout = 30000; // 30 seconds default timeout
 
   constructor(auth: InfisicalAuth, projectId: string) {
     this.auth = auth;
     this.projectId = projectId;
+  }
+
+  // Private request helper with timeout support
+  private async request(url: string, options: RequestInit, timeout: number = this.defaultTimeout): Promise<Response> {
+    console.log('[Infisical]', options.method || 'GET', url, `(timeout: ${timeout}ms)`);
+
+    // Create AbortController for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      console.error('[Infisical] Request timeout after', timeout, 'ms');
+      controller.abort();
+    }, timeout);
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+      return response;
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        throw new Error(`Infisical API timeout after ${timeout}ms for ${url}`);
+      }
+      throw error;
+    }
   }
 
   // Authenticate and get access token
@@ -95,11 +124,11 @@ export class InfisicalService {
     }
 
     const authUrl = `${this.baseUrl}/auth/universal-auth/login`;
-    console.log('[Infisical] Authenticating to:', authUrl);
+    console.log('[Infisical] Authenticating...');
     console.log('[Infisical] Client ID length:', this.auth.clientId?.length || 0);
     console.log('[Infisical] Client Secret length:', this.auth.clientSecret?.length || 0);
 
-    const response = await fetch(authUrl, {
+    const response = await this.request(authUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -109,7 +138,6 @@ export class InfisicalService {
     });
 
     console.log('[Infisical] Auth response status:', response.status);
-    console.log('[Infisical] Auth response headers:', Object.fromEntries(response.headers.entries()));
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -134,7 +162,8 @@ export class InfisicalService {
     const secretsUrl = `https://app.infisical.com/api/v4/secrets?projectId=${this.projectId}&environment=${environment}&secretPath=/`;
     console.log('[Infisical] Fetching secrets from:', secretsUrl);
 
-    const response = await fetch(secretsUrl, {
+    const response = await this.request(secretsUrl, {
+      method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
       },

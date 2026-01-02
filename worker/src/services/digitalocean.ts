@@ -18,31 +18,54 @@ interface DropletCreateParams {
 export class DigitalOceanService {
   private token: string;
   private baseUrl = 'https://api.digitalocean.com/v2';
+  private defaultTimeout = 30000; // 30 seconds default timeout
 
   constructor(token: string) {
     this.token = token;
   }
 
-  private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  private async request<T>(endpoint: string, options?: RequestInit, timeout: number = this.defaultTimeout): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
-    console.log('[DigitalOcean]', options?.method || 'GET', url);
+    console.log('[DigitalOcean]', options?.method || 'GET', url, `(timeout: ${timeout}ms)`);
 
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.token}`,
-        ...options?.headers,
-      },
-    });
+    // Create AbortController for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      console.error('[DigitalOcean] Request timeout after', timeout, 'ms');
+      controller.abort();
+    }, timeout);
 
-    console.log('[DigitalOcean] Response status:', response.status);
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.token}`,
+          ...options?.headers,
+        },
+        signal: controller.signal,
+      });
 
-    if (!response.ok) {
-      const error = await response.text();
-      console.error('[DigitalOcean] API error:', error);
-      throw new Error(`DigitalOcean API error: ${response.status} - ${error}`);
+      clearTimeout(timeoutId);
+      console.log('[DigitalOcean] Response status:', response.status);
+
+      if (!response.ok) {
+        const error = await response.text();
+        console.error('[DigitalOcean] API error:', error);
+        throw new Error(`DigitalOcean API error: ${response.status} - ${error}`);
+      }
+
+      return await this.parseResponse<T>(response);
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        throw new Error(`DigitalOcean API timeout after ${timeout}ms for ${endpoint}`);
+      }
+      throw error;
     }
+  }
+
+  private async parseResponse<T>(response: Response): Promise<T> {
 
     // 204 No Content - return empty object
     if (response.status === 204) {

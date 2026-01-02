@@ -11,40 +11,58 @@ export class CloudflareDNSService {
   private token: string;
   private zoneId: string;
   private baseUrl = 'https://api.cloudflare.com/client/v4';
+  private defaultTimeout = 30000; // 30 seconds default timeout
 
   constructor(token: string, zoneId: string) {
     this.token = token;
     this.zoneId = zoneId;
   }
 
-  private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  private async request<T>(endpoint: string, options?: RequestInit, timeout: number = this.defaultTimeout): Promise<T> {
     const url = this.baseUrl + endpoint;
-    console.log('[Cloudflare DNS]', options?.method || 'GET', url);
+    console.log('[Cloudflare DNS]', options?.method || 'GET', url, `(timeout: ${timeout}ms)`);
 
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + this.token,
-        ...options?.headers,
-      },
-    });
+    // Create AbortController for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      console.error('[Cloudflare DNS] Request timeout after', timeout, 'ms');
+      controller.abort();
+    }, timeout);
 
-    console.log('[Cloudflare DNS] Response status:', response.status);
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + this.token,
+          ...options?.headers,
+        },
+        signal: controller.signal,
+      });
 
-    if (!response.ok) {
-      const error = await response.text();
-      console.error('[Cloudflare DNS] API error:', error);
-      throw new Error('Cloudflare API error: ' + response.status + ' - ' + error);
+      clearTimeout(timeoutId);
+      console.log('[Cloudflare DNS] Response status:', response.status);
+
+      if (!response.ok) {
+        const error = await response.text();
+        console.error('[Cloudflare DNS] API error:', error);
+        throw new Error('Cloudflare API error: ' + response.status + ' - ' + error);
+      }
+
+      const data = await response.json();
+      if (!data.success) {
+        console.error('[Cloudflare DNS] API returned errors:', data.errors);
+        throw new Error('Cloudflare API error: ' + JSON.stringify(data.errors));
+      }
+
+      return data.result;
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        throw new Error(`Cloudflare DNS API timeout after ${timeout}ms for ${endpoint}`);
+      }
+      throw error;
     }
-
-    const data = await response.json();
-    if (!data.success) {
-      console.error('[Cloudflare DNS] API returned errors:', data.errors);
-      throw new Error('Cloudflare API error: ' + JSON.stringify(data.errors));
-    }
-
-    return data.result;
   }
 
   // Create DNS A record
