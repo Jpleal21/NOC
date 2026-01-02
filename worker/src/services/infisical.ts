@@ -81,6 +81,7 @@ export class InfisicalService {
   private auth: InfisicalAuth;
   private projectId: string;
   private accessToken: string | null = null;
+  private tokenExpiresAt: number | null = null; // Unix timestamp in milliseconds
   private defaultTimeout = 30000; // 30 seconds default timeout
 
   constructor(auth: InfisicalAuth, projectId: string) {
@@ -116,11 +117,23 @@ export class InfisicalService {
     }
   }
 
-  // Authenticate and get access token
+  // Authenticate and get access token with expiration handling
   private async authenticate(): Promise<string> {
-    if (this.accessToken) {
-      console.log('[Infisical] Using cached access token');
+    const now = Date.now();
+    const refreshBuffer = 5 * 60 * 1000; // Refresh 5 minutes before expiration
+
+    // Check if we have a valid cached token (exists and not expired/near expiration)
+    if (this.accessToken && this.tokenExpiresAt && now < (this.tokenExpiresAt - refreshBuffer)) {
+      const expiresInSeconds = Math.floor((this.tokenExpiresAt - now) / 1000);
+      console.log('[Infisical] Using cached access token (expires in', expiresInSeconds, 'seconds)');
       return this.accessToken;
+    }
+
+    // Token expired or near expiration, get a new one
+    if (this.accessToken) {
+      console.log('[Infisical] Token expired or near expiration, refreshing...');
+      this.accessToken = null;
+      this.tokenExpiresAt = null;
     }
 
     const authUrl = `${this.baseUrl}/auth/universal-auth/login`;
@@ -147,12 +160,21 @@ export class InfisicalService {
 
     const data = await response.json();
     console.log('[Infisical] Auth successful, token received');
+
+    // Cache token and calculate expiration
     this.accessToken = data.accessToken;
+
+    // Infisical Universal Auth tokens typically have 7200s (2 hour) TTL
+    // If API provides expiresIn, use that; otherwise default to 1 hour for safety
+    const expiresInSeconds = data.expiresIn || 3600;
+    this.tokenExpiresAt = now + (expiresInSeconds * 1000);
+
+    console.log('[Infisical] Token expires in', expiresInSeconds, 'seconds');
     return this.accessToken;
   }
 
-  // Fetch secrets from Infisical
-  async getSecrets(environment: string = 'prod'): Promise<InfisicalSecrets> {
+  // Fetch secrets from Infisical with automatic token refresh on 401
+  async getSecrets(environment: string = 'prod', retryOnAuth = true): Promise<InfisicalSecrets> {
     console.log('[Infisical] Fetching secrets for environment:', environment);
     console.log('[Infisical] Project ID:', this.projectId);
 
@@ -170,6 +192,15 @@ export class InfisicalService {
     });
 
     console.log('[Infisical] Secrets fetch response status:', response.status);
+
+    // Handle 401 Unauthorized - token may have expired mid-flight
+    if (response.status === 401 && retryOnAuth) {
+      console.warn('[Infisical] Got 401, token may be invalid. Clearing cache and retrying...');
+      this.accessToken = null;
+      this.tokenExpiresAt = null;
+      // Retry once with retryOnAuth=false to prevent infinite loop
+      return this.getSecrets(environment, false);
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
