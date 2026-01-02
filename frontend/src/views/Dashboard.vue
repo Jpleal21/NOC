@@ -18,6 +18,22 @@
           </div>
         </div>
         <div class="flex items-center space-x-3">
+          <!-- Navigation Links -->
+          <nav class="flex items-center space-x-2 mr-4">
+            <router-link
+              to="/servers"
+              class="px-3 py-2 text-sm text-dark-muted hover:text-white hover:bg-dark-hover rounded-lg transition-colors"
+            >
+              Servers
+            </router-link>
+            <router-link
+              to="/deployments"
+              class="px-3 py-2 text-sm text-dark-muted hover:text-white hover:bg-dark-hover rounded-lg transition-colors"
+            >
+              Deployments
+            </router-link>
+          </nav>
+
           <!-- Dark Mode Toggle (Quick Access) -->
           <button
             @click="toggleDarkMode"
@@ -32,8 +48,8 @@
             </svg>
           </button>
           <!-- Deploy Button -->
-          <button
-            @click="showDeployModal = true"
+          <router-link
+            to="/deploy"
             class="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white font-medium rounded-lg
                    transition-colors flex items-center space-x-2"
           >
@@ -41,7 +57,7 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
             </svg>
             <span>Deploy New Server</span>
-          </button>
+          </router-link>
         </div>
       </div>
     </header>

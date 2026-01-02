@@ -89,6 +89,11 @@ class ApiClient {
     });
   }
 
+  // Deploy new server (async version for Pinia store)
+  async deploy(data) {
+    return this.post('/api/deploy', data);
+  }
+
   // Deploy application to provisioned server (triggers GitHub Actions)
   async deployApplication(data) {
     return this.post('/api/deploy/application', data);

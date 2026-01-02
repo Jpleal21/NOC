@@ -1,7 +1,11 @@
 <template>
-  <Dashboard />
+  <Toaster position="top-right" richColors />
+  <router-view />
 </template>
 
 <script setup>
-import Dashboard from './views/Dashboard.vue';
+import { Toaster } from 'vue-sonner'
+
+// App shell - routes controlled by Vue Router
+// Toaster provides global toast notifications
 </script>
