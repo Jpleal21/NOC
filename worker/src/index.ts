@@ -776,8 +776,8 @@ app.get('/api/tags', async (c) => {
 app.get('/api/dns', async (c) => {
   try {
     console.log('[NOC Worker] GET /api/dns');
-    const cfToken = c.env.CLOUDFLARE_DNS_TOKEN;
-    const cfZoneId = c.env.CLOUDFLARE_ZONE_ID;
+    const cfToken = await c.env.CLOUDFLARE_API_TOKEN.get();
+    const cfZoneId = await c.env.CLOUDFLARE_ZONE_ID.get();
 
     if (!cfToken || !cfZoneId) {
       console.error('[NOC Worker] Missing Cloudflare credentials');
