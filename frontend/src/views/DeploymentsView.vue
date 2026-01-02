@@ -1,34 +1,7 @@
 <template>
-  <div class="min-h-screen bg-dark-bg">
-    <!-- Header -->
-    <header class="bg-dark-surface border-b border-dark-border">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <div class="flex items-center justify-between">
-          <div>
-            <h1 class="text-2xl font-bold text-white">Deployment History</h1>
-            <p class="text-sm text-dark-muted mt-1">All server deployments and their status</p>
-          </div>
-          <div class="flex items-center space-x-3">
-            <button
-              @click="refreshDeployments"
-              :disabled="store.loadingHistory"
-              class="px-4 py-2 bg-dark-hover text-white rounded-lg hover:bg-dark-border transition-colors disabled:opacity-50"
-            >
-              {{ store.loadingHistory ? 'Refreshing...' : '↻ Refresh' }}
-            </button>
-            <router-link
-              to="/deploy"
-              class="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors"
-            >
-              + Deploy Server
-            </router-link>
-          </div>
-        </div>
-      </div>
-    </header>
-
+  <div>
     <!-- Stats Cards -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div class="mb-6">
       <div class="grid grid-cols-4 gap-4">
         <div class="bg-dark-surface rounded-lg border border-dark-border p-4">
           <div class="text-sm text-dark-muted">Total Deployments</div>
@@ -50,7 +23,17 @@
     </div>
 
     <!-- Deployments Table -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
+    <div>
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-lg font-semibold text-white">Recent Deployments</h2>
+        <button
+          @click="refreshDeployments"
+          :disabled="store.loadingHistory"
+          class="px-4 py-2 bg-dark-hover text-white rounded-lg hover:bg-dark-border transition-colors disabled:opacity-50"
+        >
+          {{ store.loadingHistory ? 'Refreshing...' : '↻ Refresh' }}
+        </button>
+      </div>
       <div class="bg-dark-surface rounded-lg border border-dark-border overflow-hidden">
         <!-- Loading State -->
         <div v-if="store.loadingHistory" class="p-8 text-center text-dark-muted">
@@ -142,13 +125,14 @@
           </tbody>
         </table>
       </div>
-    </main>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { onMounted } from 'vue'
 import { useDeploymentsStore } from '../stores/deployments'
+import { formatRelativeDate as formatDate } from '../utils/date'
 
 const store = useDeploymentsStore()
 
@@ -158,25 +142,5 @@ onMounted(() => {
 
 function refreshDeployments() {
   store.fetchDeployments()
-}
-
-function formatDate(dateString) {
-  if (!dateString) return 'N/A'
-
-  const date = new Date(dateString)
-  const now = new Date()
-  const diffMs = now - date
-  const diffMins = Math.floor(diffMs / 60000)
-
-  if (diffMins < 1) return 'Just now'
-  if (diffMins < 60) return `${diffMins}m ago`
-
-  const diffHours = Math.floor(diffMins / 60)
-  if (diffHours < 24) return `${diffHours}h ago`
-
-  const diffDays = Math.floor(diffHours / 24)
-  if (diffDays < 7) return `${diffDays}d ago`
-
-  return date.toLocaleDateString()
 }
 </script>

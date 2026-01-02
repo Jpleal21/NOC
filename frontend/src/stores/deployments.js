@@ -13,8 +13,17 @@ export const useDeploymentsStore = defineStore('deployments', {
     loading: false,
     loadingHistory: false,
 
-    // Deployment progress (for SSE updates)
+    // Deployment progress (consolidated from DeploymentProgress component)
     deploymentProgress: {
+      isDeploying: false,
+      deploymentComplete: false,
+      deploymentError: null,
+      deploymentResult: null,
+      steps: [],
+      applicationDeploying: false,
+      applicationDeployed: false,
+      workflowUrl: null,
+      // Legacy fields for SSE updates
       status: null,
       message: null,
       percentage: 0
@@ -93,15 +102,84 @@ export const useDeploymentsStore = defineStore('deployments', {
       }
     },
 
-    // Update deployment progress (called from SSE)
+    // Update deployment progress (called from SSE) - now also builds steps
     updateProgress(status, message, percentage) {
-      this.deploymentProgress = { status, message, percentage }
+      this.deploymentProgress.status = status
+      this.deploymentProgress.message = message
+      this.deploymentProgress.percentage = percentage
+
+      // Add step if message changed
+      if (message && (!this.deploymentProgress.steps.length ||
+          this.deploymentProgress.steps[this.deploymentProgress.steps.length - 1].message !== message)) {
+        this.addStep(message, 'loading')
+      }
+    },
+
+    // Deployment Progress Actions (consolidated from DeploymentProgress component)
+    addStep(message, status = 'loading', details = null) {
+      this.deploymentProgress.steps.push({ message, status, details })
+    },
+
+    updateLastStep(status, details = null) {
+      if (this.deploymentProgress.steps.length > 0) {
+        const lastStep = this.deploymentProgress.steps[this.deploymentProgress.steps.length - 1]
+        lastStep.status = status
+        if (details) {
+          lastStep.details = details
+        }
+      }
+    },
+
+    setDeploying() {
+      this.deploymentProgress.isDeploying = true
+      this.deploymentProgress.deploymentComplete = false
+      this.deploymentProgress.deploymentError = null
+    },
+
+    setComplete(result) {
+      this.deploymentProgress.deploymentComplete = true
+      this.deploymentProgress.isDeploying = false
+      this.deploymentProgress.deploymentResult = result
+      this.updateLastStep('complete')
+    },
+
+    setError(error) {
+      this.deploymentProgress.deploymentError = error
+      this.deploymentProgress.isDeploying = false
+      this.updateLastStep('error')
+    },
+
+    setApplicationDeploymentStarted(url) {
+      this.deploymentProgress.applicationDeploying = false
+      this.deploymentProgress.applicationDeployed = true
+      this.deploymentProgress.workflowUrl = url
+    },
+
+    setApplicationDeploymentError() {
+      this.deploymentProgress.applicationDeploying = false
+      this.deploymentProgress.applicationDeployed = false
+    },
+
+    resetDeploymentProgress() {
+      this.deploymentProgress = {
+        isDeploying: false,
+        deploymentComplete: false,
+        deploymentError: null,
+        deploymentResult: null,
+        steps: [],
+        applicationDeploying: false,
+        applicationDeployed: false,
+        workflowUrl: null,
+        status: null,
+        message: null,
+        percentage: 0
+      }
     },
 
     // Clear active deployment
     clearActiveDeployment() {
       this.activeDeployment = null
-      this.deploymentProgress = { status: null, message: null, percentage: 0 }
+      this.resetDeploymentProgress()
     }
   }
 })

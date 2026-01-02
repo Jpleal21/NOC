@@ -155,6 +155,16 @@ class ApiClient {
   async getAllTags() {
     return this.get('/api/tags');
   }
+
+  // ========================================
+  // DNS MANAGEMENT
+  // ========================================
+
+  // Get DNS records from Cloudflare
+  async getDNSRecords(namePattern = null) {
+    const query = namePattern ? `?name=${encodeURIComponent(namePattern)}` : '';
+    return this.get(`/api/dns${query}`);
+  }
 }
 
 export default new ApiClient();

@@ -107,25 +107,29 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { computed } from 'vue';
+import { useDeploymentsStore } from '../stores/deployments';
 
 const emit = defineEmits(['deployApplication']);
+const deploymentsStore = useDeploymentsStore();
 
-const isDeploying = ref(false);
-const deploymentComplete = ref(false);
-const deploymentError = ref(null);
-const deploymentResult = ref(null);
-const steps = ref([]);
-const applicationDeploying = ref(false);
-const applicationDeployed = ref(false);
-const workflowUrl = ref(null);
+// All state now comes from Pinia store
+const progress = computed(() => deploymentsStore.deploymentProgress);
+const isDeploying = computed(() => progress.value.isDeploying);
+const deploymentComplete = computed(() => progress.value.deploymentComplete);
+const deploymentError = computed(() => progress.value.deploymentError);
+const deploymentResult = computed(() => progress.value.deploymentResult);
+const steps = computed(() => progress.value.steps);
+const applicationDeploying = computed(() => progress.value.applicationDeploying);
+const applicationDeployed = computed(() => progress.value.applicationDeployed);
+const workflowUrl = computed(() => progress.value.workflowUrl);
 
 const showProgress = computed(() => steps.value.length > 0);
 
 function emitDeployApplication() {
   if (!deploymentResult.value) return;
 
-  applicationDeploying.value = true;
+  deploymentsStore.deploymentProgress.applicationDeploying = true;
   emit('deployApplication', {
     droplet_id: deploymentResult.value.droplet_id,
     ip_address: deploymentResult.value.ip_address,
@@ -142,58 +146,4 @@ function getStepClass(step) {
   }
   return 'bg-dark-hover border border-dark-border';
 }
-
-function addStep(message, status = 'loading', details = null) {
-  steps.value.push({ message, status, details });
-}
-
-function updateLastStep(status, details = null) {
-  if (steps.value.length > 0) {
-    steps.value[steps.value.length - 1].status = status;
-    if (details) {
-      steps.value[steps.value.length - 1].details = details;
-    }
-  }
-}
-
-function reset() {
-  isDeploying.value = false;
-  deploymentComplete.value = false;
-  deploymentError.value = null;
-  deploymentResult.value = null;
-  steps.value = [];
-  applicationDeploying.value = false;
-  applicationDeployed.value = false;
-  workflowUrl.value = null;
-}
-
-defineExpose({
-  isDeploying,
-  addStep,
-  updateLastStep,
-  reset,
-  setComplete(result) {
-    deploymentComplete.value = true;
-    isDeploying.value = false;
-    deploymentResult.value = result;
-  },
-  setError(error) {
-    deploymentError.value = error;
-    isDeploying.value = false;
-  },
-  setDeploying() {
-    isDeploying.value = true;
-    deploymentComplete.value = false;
-    deploymentError.value = null;
-  },
-  setApplicationDeploymentStarted(url) {
-    applicationDeploying.value = false;
-    applicationDeployed.value = true;
-    workflowUrl.value = url;
-  },
-  setApplicationDeploymentError() {
-    applicationDeploying.value = false;
-    applicationDeployed.value = false;
-  }
-});
 </script>

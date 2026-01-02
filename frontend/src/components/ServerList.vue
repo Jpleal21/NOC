@@ -131,6 +131,8 @@
 </template>
 
 <script setup>
+import { formatDateTime as formatDate } from '../utils/date';
+
 defineProps({
   servers: {
     type: Array,
@@ -151,14 +153,5 @@ function getStatusClass(status) {
     'off': 'status-badge-gray',
   };
   return classes[status] || 'status-badge-gray';
-}
-
-function formatDate(dateString) {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
 }
 </script>

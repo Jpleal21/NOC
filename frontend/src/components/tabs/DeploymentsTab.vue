@@ -75,8 +75,9 @@
             <td class="px-6 py-4 whitespace-nowrap">
               <span :class="[
                 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-                deployment.status === 'success' ? 'bg-green-500/20 text-green-400' :
+                deployment.status === 'completed' ? 'bg-green-500/20 text-green-400' :
                 deployment.status === 'failed' ? 'bg-red-500/20 text-red-400' :
+                deployment.status === 'in_progress' ? 'bg-blue-500/20 text-blue-400' :
                 'bg-yellow-500/20 text-yellow-400'
               ]">
                 {{ deployment.status }}
@@ -107,6 +108,8 @@
 </template>
 
 <script setup>
+import { formatDateTime as formatTimestamp } from '../../utils/date';
+
 defineProps({
   deployments: {
     type: Array,
@@ -119,15 +122,4 @@ defineProps({
 });
 
 defineEmits(['refresh']);
-
-function formatTimestamp(timestamp) {
-  if (!timestamp) return '-';
-  const date = new Date(timestamp);
-  return date.toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
 </script>

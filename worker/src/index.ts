@@ -707,4 +707,36 @@ app.get('/api/tags', async (c) => {
   }
 });
 
+// ========================================
+// DNS MANAGEMENT
+// ========================================
+
+// List DNS records from Cloudflare
+app.get('/api/dns', async (c) => {
+  try {
+    console.log('[NOC Worker] GET /api/dns');
+    const cfToken = c.env.CLOUDFLARE_DNS_TOKEN;
+    const cfZoneId = c.env.CLOUDFLARE_ZONE_ID;
+
+    if (!cfToken || !cfZoneId) {
+      console.error('[NOC Worker] Missing Cloudflare credentials');
+      return c.json({ success: false, error: 'Cloudflare credentials not configured' }, 500);
+    }
+
+    const dnsService = new CloudflareDNSService(cfToken, cfZoneId);
+
+    // Get optional name pattern filter
+    const namePattern = c.req.query('name');
+
+    console.log('[NOC Worker] Fetching DNS records', namePattern ? `(filtered by: ${namePattern})` : '(all)');
+    const records = await dnsService.listRecords(namePattern);
+
+    console.log('[NOC Worker] Returning', records.length, 'DNS records');
+    return c.json({ success: true, records });
+  } catch (error: any) {
+    console.error('[NOC Worker] Error fetching DNS records:', error);
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
 export default app;

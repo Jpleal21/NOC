@@ -3,27 +3,43 @@ import { createRouter, createWebHistory } from 'vue-router'
 const routes = [
   {
     path: '/',
-    name: 'home',
     component: () => import('../views/Dashboard.vue'),
-    meta: { title: 'Dashboard' }
-  },
-  {
-    path: '/deploy',
-    name: 'deploy',
-    component: () => import('../views/DeployView.vue'),
-    meta: { title: 'Deploy Server' }
-  },
-  {
-    path: '/deployments',
-    name: 'deployments',
-    component: () => import('../views/DeploymentsView.vue'),
-    meta: { title: 'Deployment History' }
-  },
-  {
-    path: '/servers',
-    name: 'servers',
-    component: () => import('../views/ServersView.vue'),
-    meta: { title: 'Servers' }
+    children: [
+      {
+        path: '',
+        redirect: '/servers'
+      },
+      {
+        path: 'servers',
+        name: 'servers',
+        component: () => import('../views/ServersView.vue'),
+        meta: { title: 'Servers' }
+      },
+      {
+        path: 'deployments',
+        name: 'deployments',
+        component: () => import('../views/DeploymentsView.vue'),
+        meta: { title: 'Deployments' }
+      },
+      {
+        path: 'dns',
+        name: 'dns',
+        component: () => import('../views/DNSView.vue'),
+        meta: { title: 'DNS Records' }
+      },
+      {
+        path: 'settings',
+        name: 'settings',
+        component: () => import('../views/SettingsView.vue'),
+        meta: { title: 'Settings' }
+      },
+      {
+        path: 'deploy',
+        name: 'deploy',
+        component: () => import('../views/DeployView.vue'),
+        meta: { title: 'Deploy Server' }
+      }
+    ]
   }
 ]
 

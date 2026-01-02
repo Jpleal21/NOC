@@ -15,6 +15,19 @@ export function useDeploymentStream() {
     currentStep.value = null
     currentMessage.value = null
 
+    // Reset and initialize deployment progress
+    deploymentsStore.resetDeploymentProgress()
+    deploymentsStore.setDeploying()
+
+    // Store deployment config in Pinia for later use (e.g., application deployment)
+    deploymentsStore.activeDeployment = {
+      server_name: config.server_name,
+      branch: config.branch,
+      deployment_profile: config.deployment_profile,
+      region: config.droplet_region,
+      started_at: new Date().toISOString()
+    }
+
     try {
       const response = await fetch(`${API_BASE_URL}/api/deploy`, {
         method: 'POST',
@@ -74,9 +87,22 @@ export function useDeploymentStream() {
                   description: event.message
                 })
               } else if (event.step === 'completed') {
+                deploymentsStore.setComplete({
+                  droplet_id: event.droplet_id,
+                  ip_address: event.ip_address
+                })
                 toast.success('Deployment completed!', {
                   description: event.message
                 })
+                // Refresh deployments list to show the final status
+                deploymentsStore.fetchDeployments()
+              } else if (event.step === 'failed') {
+                deploymentsStore.setError(event.message)
+                toast.error('Deployment failed', {
+                  description: event.message
+                })
+                // Refresh deployments list to show the final status
+                deploymentsStore.fetchDeployments()
               }
             } catch (e) {
               console.error('[SSE] Failed to parse event:', data, e)
@@ -103,10 +129,10 @@ export function useDeploymentStream() {
   // Cleanup function to cancel active stream
   function cleanup() {
     if (activeReader) {
+      console.log('[SSE] Stream cancelled on cleanup')
       activeReader.cancel()
       activeReader = null
       isStreaming.value = false
-      console.log('[SSE] Stream cancelled on cleanup')
     }
   }
 
