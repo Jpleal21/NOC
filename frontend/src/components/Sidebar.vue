@@ -224,7 +224,7 @@ setActiveTab();
 .hamburger-btn span {
   width: 100%;
   height: 3px;
-  background: #3b82f6;
+  background: #ff6700;
   border-radius: 10px;
   transition: all 0.3s ease;
   transform-origin: center;
@@ -375,7 +375,7 @@ setActiveTab();
 .nav-button:hover svg,
 .theme-btn:hover svg {
   transform: translateY(-3px);
-  color: #3b82f6;
+  color: #ff6700;
 }
 
 .nav-button span,
@@ -392,7 +392,7 @@ setActiveTab();
   padding: 2px 8px;
   font-size: 0.7rem;
   font-weight: 600;
-  background: #3b82f6;
+  background: #ff6700;
   color: white;
   border-radius: 4px;
 }
@@ -409,11 +409,11 @@ setActiveTab();
   top: 0;
   bottom: 0;
   width: 3px;
-  background: #3b82f6;
+  background: #ff6700;
 }
 
 .selected svg {
-  color: #3b82f6;
+  color: #ff6700;
 }
 
 .selected:hover {
@@ -450,7 +450,7 @@ setActiveTab();
 
 .user-info-btn svg {
   min-width: 22px;
-  color: #3b82f6;
+  color: #ff6700;
   flex-shrink: 0;
 }
 
@@ -474,11 +474,11 @@ setActiveTab();
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  background: #3b82f6;
+  background: #ff6700;
   color: white;
   border-radius: 4px;
   margin-left: 34px;
-  box-shadow: 0 1px 3px rgba(59, 130, 246, 0.2);
+  box-shadow: 0 1px 3px rgba(255, 103, 0, 0.2);
 }
 
 .theme-btn {
