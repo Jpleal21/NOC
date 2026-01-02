@@ -279,23 +279,40 @@ app.post('/api/deploy', async (c) => {
           console.log('[NOC Worker] Step 3a: Waiting for droplet to become active');
           await stream.write('data: ' + JSON.stringify({ step: 'active', message: 'Waiting for droplet to become active...' }) + '\n\n');
 
+          // Poll for droplet active status with exponential backoff
           let dropletActive = false;
           let attempts = 0;
-          while (!dropletActive && attempts < 60) {
-            await new Promise(resolve => setTimeout(resolve, 3000));
+          let delay = 1000; // Start with 1 second
+          const maxDelay = 30000; // Cap at 30 seconds
+          const maxTime = 300000; // 5 minutes maximum
+          const startTime = Date.now();
+
+          while (!dropletActive && (Date.now() - startTime) < maxTime) {
+            // Check immediately on first attempt, otherwise wait
+            if (attempts > 0) {
+              await new Promise(resolve => setTimeout(resolve, delay));
+              // Exponential backoff: double delay, cap at 30s
+              delay = Math.min(delay * 2, maxDelay);
+            }
+
             const updated = await doService.getDroplet(droplet.id);
             dropletActive = updated.status === 'active';
             attempts++;
-            if (attempts % 5 === 0) {
-              console.log('[NOC Worker] Still waiting for active status... attempt', attempts);
+
+            if (!dropletActive && attempts % 3 === 0) {
+              const elapsed = Math.floor((Date.now() - startTime) / 1000);
+              console.log('[NOC Worker] Still waiting for active status... attempt', attempts, 'elapsed:', elapsed + 's');
             }
           }
 
           if (!dropletActive) {
-            console.error('[NOC Worker] Droplet failed to become active after', attempts, 'attempts');
-            throw new Error('Droplet failed to become active');
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            console.error('[NOC Worker] Droplet failed to become active after', elapsed, 'seconds');
+            throw new Error('Droplet failed to become active after ' + elapsed + ' seconds');
           }
-          console.log('[NOC Worker] Droplet is now active');
+
+          const activationTime = Math.floor((Date.now() - startTime) / 1000);
+          console.log('[NOC Worker] Droplet is now active after', activationTime, 'seconds');
 
           // Wait for pending events to clear before IP/firewall operations
           console.log('[NOC Worker] Waiting for pending events to clear...');
@@ -332,25 +349,43 @@ app.post('/api/deploy', async (c) => {
           }
         }
 
-        // Step 4: Wait for IP address
+        // Step 4: Wait for IP address with exponential backoff
         console.log('[NOC Worker] Step 4: Wait for IP address assignment');
         await stream.write('data: ' + JSON.stringify({ step: 'ip', message: 'Waiting for IP address...' }) + '\n\n');
+
         let ipAddress = null;
         let attempts = 0;
-        while (!ipAddress && attempts < 60) {
-          await new Promise(resolve => setTimeout(resolve, 2000));
+        let delay = 1000; // Start with 1 second
+        const maxDelay = 30000; // Cap at 30 seconds
+        const maxTime = 300000; // 5 minutes maximum
+        const startTime = Date.now();
+
+        while (!ipAddress && (Date.now() - startTime) < maxTime) {
+          // Check immediately on first attempt, otherwise wait
+          if (attempts > 0) {
+            await new Promise(resolve => setTimeout(resolve, delay));
+            // Exponential backoff: double delay, cap at 30s
+            delay = Math.min(delay * 2, maxDelay);
+          }
+
           const updated = await doService.getDroplet(droplet.id);
           ipAddress = updated.networks?.v4?.find(ip => ip.type === 'public')?.ip_address;
           attempts++;
-          if (attempts % 5 === 0) {
-            console.log('[NOC Worker] Still waiting for IP... attempt', attempts);
+
+          if (!ipAddress && attempts % 3 === 0) {
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            console.log('[NOC Worker] Still waiting for IP... attempt', attempts, 'elapsed:', elapsed + 's');
           }
         }
 
         if (!ipAddress) {
-          console.error('[NOC Worker] Failed to get IP address after', attempts, 'attempts');
-          throw new Error('Failed to get droplet IP address');
+          const elapsed = Math.floor((Date.now() - startTime) / 1000);
+          console.error('[NOC Worker] Failed to get IP address after', elapsed, 'seconds');
+          throw new Error('Failed to get droplet IP address after ' + elapsed + ' seconds');
         }
+
+        const ipAssignmentTime = Math.floor((Date.now() - startTime) / 1000);
+        console.log('[NOC Worker] IP address assigned after', ipAssignmentTime, 'seconds');
 
         // Use reserved IP if specified, otherwise use droplet IP
         const finalIP = reserved_ip || ipAddress;
