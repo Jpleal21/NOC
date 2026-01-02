@@ -14,9 +14,10 @@ class ApiClient {
     };
   }
 
-  async get(endpoint) {
+  async get(endpoint, options = {}) {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       headers: this.getAuthHeaders(),
+      signal: options.signal, // Support AbortSignal for request cancellation
     });
 
     if (!response.ok) {
@@ -67,8 +68,8 @@ class ApiClient {
   }
 
   // Get all deployed servers
-  async getServers() {
-    return this.get('/api/servers');
+  async getServers(signal) {
+    return this.get('/api/servers', { signal });
   }
 
   // Delete server by name
@@ -137,8 +138,8 @@ class ApiClient {
   // ========================================
 
   // Get tags for a specific server
-  async getServerTags(serverName) {
-    return this.get(`/api/servers/${serverName}/tags`);
+  async getServerTags(serverName, signal) {
+    return this.get(`/api/servers/${serverName}/tags`, { signal });
   }
 
   // Add a tag to a server

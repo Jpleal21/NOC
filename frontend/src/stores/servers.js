@@ -43,12 +43,12 @@ export const useServersStore = defineStore('servers', {
 
   actions: {
     // Fetch all servers with tags
-    async fetchServers() {
+    async fetchServers(options = {}) {
       this.loading = true
 
       try {
         console.log('[ServersStore] Fetching servers from API')
-        const result = await api.getServers()
+        const result = await api.getServers(options.signal)
 
         if (result.success) {
           console.log('[ServersStore] Received', result.servers.length, 'servers')
@@ -56,7 +56,7 @@ export const useServersStore = defineStore('servers', {
           // Load tags for each server
           const serversWithTags = await Promise.all(
             result.servers.map(async (server) => {
-              const tagsResult = await api.getServerTags(server.name)
+              const tagsResult = await api.getServerTags(server.name, options.signal)
               return {
                 ...server,
                 tags: tagsResult.success ? tagsResult.tags : []

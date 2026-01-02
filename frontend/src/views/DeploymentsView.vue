@@ -130,15 +130,40 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useDeploymentsStore } from '../stores/deployments'
 import { formatRelativeDate as formatDate } from '../utils/date'
 
 const store = useDeploymentsStore()
+const pollIntervalId = ref(null)
 
 onMounted(() => {
   store.fetchDeployments()
+  startPolling()
 })
+
+onBeforeUnmount(() => {
+  stopPolling()
+})
+
+// Start polling for in-progress deployments
+function startPolling() {
+  // Poll every 10 seconds to check for in-progress deployments
+  pollIntervalId.value = setInterval(() => {
+    // Only poll if there are in-progress deployments
+    if (store.deploymentStats.in_progress > 0) {
+      store.fetchDeployments()
+    }
+  }, 10000) // 10 seconds
+}
+
+// Stop polling
+function stopPolling() {
+  if (pollIntervalId.value) {
+    clearInterval(pollIntervalId.value)
+    pollIntervalId.value = null
+  }
+}
 
 function refreshDeployments() {
   store.fetchDeployments()

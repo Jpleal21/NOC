@@ -106,7 +106,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { toast } from 'vue-sonner';
 import api from '../services/api';
 import ServersTab from '../components/tabs/ServersTab.vue';
@@ -129,14 +129,42 @@ const selectedBranch = ref('master');
 const showTagsModal = ref(false);
 const selectedServerForTags = ref(null);
 
+// AbortController for cancelling pending requests
+const abortController = ref(null);
+
 onMounted(() => {
   loadServers();
 });
 
+onBeforeUnmount(() => {
+  // Cancel any pending server fetch requests
+  if (abortController.value) {
+    abortController.value.abort();
+    abortController.value = null;
+  }
+});
+
 async function loadServers() {
   try {
-    await serversStore.fetchServers();
+    // Cancel previous request if still pending
+    if (abortController.value) {
+      abortController.value.abort();
+    }
+
+    // Create new AbortController for this request
+    abortController.value = new AbortController();
+
+    await serversStore.fetchServers({ signal: abortController.value.signal });
+
+    // Clear AbortController after successful completion
+    abortController.value = null;
   } catch (error) {
+    // Don't show error if request was aborted
+    if (error.name === 'AbortError') {
+      console.log('[ServersView] Server fetch aborted');
+      return;
+    }
+
     console.error('[ServersView] Failed to load servers:', error);
     toast.error('Failed to load servers', {
       description: error.message
