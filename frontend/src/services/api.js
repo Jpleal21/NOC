@@ -1,9 +1,7 @@
 // NOC Platform API Client
 // Communicates with Worker API
 
-const API_BASE_URL = import.meta.env.DEV
-  ? '/api' // Proxied to Worker dev server in dev mode
-  : 'https://noc-api.flaggerlink.com';
+import { API_BASE_URL } from '../config/api';
 
 class ApiClient {
   // Get auth headers with service token credentials
@@ -20,6 +18,12 @@ class ApiClient {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       headers: this.getAuthHeaders(),
     });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API error (${response.status}): ${errorText}`);
+    }
+
     return response.json();
   }
 
@@ -29,6 +33,12 @@ class ApiClient {
       headers: this.getAuthHeaders(),
       body: JSON.stringify(data),
     });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API error (${response.status}): ${errorText}`);
+    }
+
     return response.json();
   }
 
@@ -37,6 +47,12 @@ class ApiClient {
       method: 'DELETE',
       headers: this.getAuthHeaders(),
     });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API error (${response.status}): ${errorText}`);
+    }
+
     return response.json();
   }
 
@@ -80,18 +96,13 @@ class ApiClient {
     return this.get('/api/databases');
   }
 
-  // Deploy new server (returns EventSource for SSE)
+  // Deploy new server (returns Response for SSE streaming)
   deployServer(data) {
     return fetch(`${API_BASE_URL}/api/deploy`, {
       method: 'POST',
       headers: this.getAuthHeaders(),
       body: JSON.stringify(data),
     });
-  }
-
-  // Deploy new server (async version for Pinia store)
-  async deploy(data) {
-    return this.post('/api/deploy', data);
   }
 
   // Deploy application to provisioned server (triggers GitHub Actions)

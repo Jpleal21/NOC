@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { toast } from 'vue-sonner'
 import { useDeploymentsStore } from '../stores/deployments'
+import { API_BASE_URL } from '../config/api'
 
 export function useDeploymentStream() {
   const deploymentsStore = useDeploymentsStore()
@@ -12,10 +13,6 @@ export function useDeploymentStream() {
     isStreaming.value = true
     currentStep.value = null
     currentMessage.value = null
-
-    const API_BASE_URL = import.meta.env.DEV
-      ? '/api'
-      : 'https://noc-api.flaggerlink.com'
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/deploy`, {

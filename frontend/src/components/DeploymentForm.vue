@@ -391,7 +391,10 @@ defineExpose({
   resetForm() {
     deploying.value = false;
     form.server_name = '';
+    form.droplet_region = '';
     form.vpc_uuid = '';
+    form.droplet_size = 's-2vcpu-4gb';
+    form.branch = 'master';
     form.deployment_profile = 'core';
     form.reserved_ip = '';
     form.ssh_keys = [];

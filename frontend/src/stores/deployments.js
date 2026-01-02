@@ -59,48 +59,6 @@ export const useDeploymentsStore = defineStore('deployments', {
   },
 
   actions: {
-    // Deploy a new server
-    async deployServer(config) {
-      this.loading = true
-      this.deploymentProgress = { status: 'starting', message: 'Initiating deployment...', percentage: 0 }
-
-      try {
-        const result = await api.deploy(config)
-
-        if (result.success) {
-          this.activeDeployment = {
-            id: result.deployment_id,
-            server_name: config.server_name,
-            status: 'in_progress',
-            ...config,
-            created_at: new Date().toISOString()
-          }
-
-          // Add to deployments list
-          this.deployments.unshift(this.activeDeployment)
-
-          this.deploymentProgress = {
-            status: 'in_progress',
-            message: 'Deployment started successfully',
-            percentage: 10
-          }
-
-          return { success: true, deployment_id: result.deployment_id }
-        } else {
-          throw new Error(result.error || 'Deployment failed')
-        }
-      } catch (error) {
-        this.deploymentProgress = {
-          status: 'failed',
-          message: error.message,
-          percentage: 0
-        }
-        return { success: false, error: error.message }
-      } finally {
-        this.loading = false
-      }
-    },
-
     // Fetch deployment history
     async fetchDeployments() {
       this.loadingHistory = true
