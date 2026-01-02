@@ -71,6 +71,9 @@ export class DatabaseService {
       duration?: number;
       error_message?: string;
       completed_at?: string;
+      droplet_id?: number;
+      ip_address?: string;
+      workflow_url?: string;
     }
   ): Promise<void> {
     const fields: string[] = [];
@@ -94,6 +97,18 @@ export class DatabaseService {
     } else if (updates.status === 'success' || updates.status === 'failed') {
       // Auto-set completed_at if status is terminal
       fields.push("completed_at = datetime('now')");
+    }
+    if (updates.droplet_id !== undefined) {
+      fields.push('droplet_id = ?');
+      values.push(updates.droplet_id);
+    }
+    if (updates.ip_address !== undefined) {
+      fields.push('ip_address = ?');
+      values.push(updates.ip_address);
+    }
+    if (updates.workflow_url !== undefined) {
+      fields.push('workflow_url = ?');
+      values.push(updates.workflow_url);
     }
 
     if (fields.length === 0) return;

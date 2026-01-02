@@ -194,42 +194,70 @@ export class DigitalOceanService {
     return response.databases;
   }
 
-  // Add trusted source to database cluster
-  async addDatabaseTrustedSource(databaseId: string, ipAddress: string, dropletId?: number) {
+  // Add trusted source to database cluster with retry logic to handle race conditions
+  async addDatabaseTrustedSource(databaseId: string, ipAddress: string, dropletId?: number, maxRetries = 3) {
     console.log('[DigitalOcean] Adding trusted source to database', databaseId);
     console.log('[DigitalOcean] IP:', ipAddress, 'Droplet ID:', dropletId);
-
-    // CRITICAL: GET existing firewall rules first to avoid wiping out other servers
-    const firewall = await this.request<{ rules: any[] }>(`/databases/${databaseId}/firewall`);
-    const existingRules = firewall.rules || [];
-    console.log('[DigitalOcean] Existing firewall rules:', existingRules.length);
 
     const newSource: any = {
       type: dropletId ? 'droplet' : 'ip_addr',
       value: dropletId ? dropletId.toString() : ipAddress,
     };
 
-    // Check if this source already exists
-    const sourceExists = existingRules.some((rule: any) =>
-      rule.type === newSource.type && rule.value === newSource.value
-    );
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        // Read current firewall rules
+        const firewall = await this.request<{ rules: any[] }>(`/databases/${databaseId}/firewall`);
+        const existingRules = firewall.rules || [];
+        console.log('[DigitalOcean] Existing firewall rules:', existingRules.length, '(attempt', attempt + 1, 'of', maxRetries + ')');
 
-    if (sourceExists) {
-      console.log('[DigitalOcean] Trusted source already exists, skipping');
-      return { success: true, alreadyExists: true };
+        // Check if this source already exists
+        const sourceExists = existingRules.some((rule: any) =>
+          rule.type === newSource.type && rule.value === newSource.value
+        );
+
+        if (sourceExists) {
+          console.log('[DigitalOcean] Trusted source already exists, skipping');
+          return { success: true, alreadyExists: true };
+        }
+
+        // Add new source to existing rules
+        const updatedRules = [...existingRules, newSource];
+        console.log('[DigitalOcean] Updating firewall with', updatedRules.length, 'rules (added 1 new)');
+
+        // Write back updated rules
+        await this.request(`/databases/${databaseId}/firewall`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            rules: updatedRules,
+          }),
+        });
+
+        // Verify the rule was added by re-reading
+        const verification = await this.request<{ rules: any[] }>(`/databases/${databaseId}/firewall`);
+        const ruleAdded = verification.rules.some((rule: any) =>
+          rule.type === newSource.type && rule.value === newSource.value
+        );
+
+        if (ruleAdded) {
+          console.log('[DigitalOcean] Firewall rule verified successfully');
+          return { success: true };
+        }
+
+        console.warn('[DigitalOcean] Firewall rule not found after write, possible race condition. Retrying...');
+      } catch (error) {
+        console.error('[DigitalOcean] Error updating firewall (attempt', attempt + 1, '):', error);
+        if (attempt === maxRetries - 1) throw error;
+      }
+
+      // Add jittered delay before retry to reduce collision probability
+      const baseDelay = 200; // 200ms base
+      const jitter = Math.random() * 300; // 0-300ms jitter
+      const delay = baseDelay * (attempt + 1) + jitter;
+      console.log('[DigitalOcean] Waiting', Math.round(delay), 'ms before retry...');
+      await new Promise(resolve => setTimeout(resolve, delay));
     }
 
-    // Add new source to existing rules
-    const updatedRules = [...existingRules, newSource];
-    console.log('[DigitalOcean] Updating firewall with', updatedRules.length, 'rules (added 1 new)');
-
-    await this.request(`/databases/${databaseId}/firewall`, {
-      method: 'PUT',
-      body: JSON.stringify({
-        rules: updatedRules,
-      }),
-    });
-
-    return { success: true };
+    throw new Error('Failed to add database trusted source after ' + maxRetries + ' attempts');
   }
 }

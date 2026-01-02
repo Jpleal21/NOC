@@ -311,6 +311,9 @@ app.post('/api/deploy', async (c) => {
           console.log('[NOC Worker] Reserved IP assigned:', reserved_ip);
         }
 
+        // Track critical failures that should fail the deployment
+        let criticalFailures: string[] = [];
+
         // Step 3c: Add to firewall (if specified)
         if (firewall_id) {
           try {
@@ -319,11 +322,12 @@ app.post('/api/deploy', async (c) => {
             await doService.addDropletToFirewall(firewall_id, droplet.id);
             console.log('[NOC Worker] Added to firewall:', firewall_id);
           } catch (error: any) {
-            console.error('[NOC Worker] Failed to add to firewall (non-fatal):', error.message);
+            console.error('[NOC Worker] CRITICAL: Failed to add to firewall:', error.message);
+            criticalFailures.push('Firewall assignment failed: ' + error.message);
             await stream.write('data: ' + JSON.stringify({
               step: 'firewall',
-              message: 'Firewall assignment failed (check token permissions) - continuing deployment...',
-              warning: true
+              message: 'CRITICAL: Firewall assignment failed - ' + error.message,
+              error: true
             }) + '\n\n');
           }
         }
@@ -356,15 +360,16 @@ app.post('/api/deploy', async (c) => {
         if (database_id) {
           try {
             console.log('[NOC Worker] Step 4a: Add to database cluster');
-            await stream.write('data: ' + JSON.stringify({ step: 'database', message: 'Adding to database cluster...' }) + '\n\n');
+            await stream.write('data: ' + JSON.stringify({ step: 'database_update', message: 'Adding to database cluster...' }) + '\n\n');
             await doService.addDatabaseTrustedSource(database_id, finalIP, droplet.id);
             console.log('[NOC Worker] Added to database cluster:', database_id);
           } catch (error: any) {
-            console.error('[NOC Worker] Failed to add to database cluster (non-fatal):', error.message);
+            console.error('[NOC Worker] CRITICAL: Failed to add to database cluster:', error.message);
+            criticalFailures.push('Database access setup failed: ' + error.message);
             await stream.write('data: ' + JSON.stringify({
-              step: 'database',
-              message: 'Database trusted source assignment failed (check token permissions) - continuing deployment...',
-              warning: true
+              step: 'database_update',
+              message: 'CRITICAL: Database access setup failed - ' + error.message,
+              error: true
             }) + '\n\n');
           }
         }
@@ -385,24 +390,45 @@ app.post('/api/deploy', async (c) => {
           console.log('[NOC Worker] Tags added successfully');
         }
 
-        // Step 6: Complete
-        console.log('[NOC Worker] Deployment complete!');
+        // Step 6: Complete or fail based on critical failures
         const duration = Math.floor((Date.now() - startTime) / 1000); // seconds
-        await db.updateDeployment(deploymentId, {
-          status: 'success',
-          duration,
-          droplet_id: droplet.id,
-          ip_address: finalIP,
-        });
-        console.log('[NOC Worker] Deployment record updated with success');
 
-        await stream.write('data: ' + JSON.stringify({
-          step: 'complete',
-          message: 'Deployment complete!',
-          droplet_id: droplet.id,
-          ip_address: finalIP,
-          reserved_ip_used: !!reserved_ip,
-        }) + '\n\n');
+        if (criticalFailures.length > 0) {
+          console.error('[NOC Worker] Deployment FAILED due to critical errors:', criticalFailures);
+          await db.updateDeployment(deploymentId, {
+            status: 'failed',
+            duration,
+            droplet_id: droplet.id,
+            ip_address: finalIP,
+            error_message: criticalFailures.join('; ')
+          });
+          console.log('[NOC Worker] Deployment record updated with failure');
+
+          await stream.write('data: ' + JSON.stringify({
+            step: 'failed',
+            message: 'Deployment failed: ' + criticalFailures.join('; '),
+            droplet_id: droplet.id,
+            ip_address: finalIP,
+            errors: criticalFailures
+          }) + '\n\n');
+        } else {
+          console.log('[NOC Worker] Deployment complete!');
+          await db.updateDeployment(deploymentId, {
+            status: 'success',
+            duration,
+            droplet_id: droplet.id,
+            ip_address: finalIP,
+          });
+          console.log('[NOC Worker] Deployment record updated with success');
+
+          await stream.write('data: ' + JSON.stringify({
+            step: 'completed',
+            message: 'Deployment complete!',
+            droplet_id: droplet.id,
+            ip_address: finalIP,
+            reserved_ip_used: !!reserved_ip,
+          }) + '\n\n');
+        }
 
       } catch (error: any) {
         console.error('[NOC Worker] Deployment error:', error);

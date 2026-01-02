@@ -97,7 +97,7 @@ export class CloudflareDNSService {
     return { success: true };
   }
 
-  // Delete all records for a server
+  // Delete all records for a server (handles partial failures gracefully)
   async deleteServerRecords(serverName: string) {
     const patterns = [
       serverName + '.flaggerlink.com',
@@ -105,13 +105,54 @@ export class CloudflareDNSService {
       serverName + '-text-api.flaggerlink.com',
     ];
 
-    const deletions = await Promise.all(
+    console.log('[Cloudflare DNS] Deleting DNS records for server:', serverName);
+    let deletedCount = 0;
+    let failedCount = 0;
+    const errors: string[] = [];
+
+    // Use Promise.allSettled to handle partial failures gracefully
+    const results = await Promise.allSettled(
       patterns.map(async (pattern) => {
-        const records = await this.listRecords(pattern);
-        return Promise.all(records.map((r: any) => this.deleteRecord(r.id)));
+        try {
+          const records = await this.listRecords(pattern);
+          console.log('[Cloudflare DNS] Found', records.length, 'records for pattern:', pattern);
+
+          // Delete each record individually, tracking failures
+          const deleteResults = await Promise.allSettled(
+            records.map((r: any) => this.deleteRecord(r.id))
+          );
+
+          deleteResults.forEach((result, index) => {
+            if (result.status === 'fulfilled') {
+              deletedCount++;
+            } else {
+              failedCount++;
+              const recordId = records[index]?.id || 'unknown';
+              console.error('[Cloudflare DNS] Failed to delete record', recordId, ':', result.reason);
+              errors.push(`Failed to delete ${pattern} (${recordId}): ${result.reason}`);
+            }
+          });
+        } catch (error: any) {
+          failedCount++;
+          console.error('[Cloudflare DNS] Failed to list/delete records for pattern', pattern, ':', error);
+          errors.push(`Failed to process ${pattern}: ${error.message}`);
+        }
       })
     );
 
-    return { success: true, deleted: deletions.flat().length };
+    console.log('[Cloudflare DNS] DNS cleanup complete:', deletedCount, 'deleted,', failedCount, 'failed');
+
+    if (failedCount > 0) {
+      console.warn('[Cloudflare DNS] Some DNS deletions failed:', errors);
+      return {
+        success: false,
+        deleted: deletedCount,
+        failed: failedCount,
+        errors: errors,
+        partialSuccess: deletedCount > 0
+      };
+    }
+
+    return { success: true, deleted: deletedCount, failed: 0 };
   }
 }
