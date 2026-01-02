@@ -6,16 +6,72 @@ interface InfisicalAuth {
   clientSecret: string;
 }
 
-interface InfisicalSecrets {
+export interface InfisicalSecrets {
+  // Database Secrets - MySQL Main Data (5)
+  MYSQL_HOST: string;
+  MYSQL_PORT: string;
+  MYSQL_DATABASE: string;
+  MYSQL_USERNAME: string;
+  MYSQL_PASSWORD: string;
+
+  // Database Secrets - MySQL Auth (5)
+  AUTH_DB_HOST: string;
+  AUTH_DB_PORT: string;
+  AUTH_DB_DATABASE: string;
+  AUTH_DB_USERNAME: string;
+  AUTH_DB_PASSWORD: string;
+
+  // Database Secrets - MySQL Texting (5)
+  TEXTING_DB_HOST: string;
+  TEXTING_DB_PORT: string;
+  TEXTING_DB_DATABASE: string;
+  TEXTING_DB_USERNAME: string;
+  TEXTING_DB_PASSWORD: string;
+
+  // Infrastructure - Redis (3)
+  REDIS_HOST: string;
+  REDIS_PORT: string;
   REDIS_PASSWORD: string;
-  RABBITMQ_USER: string;
+
+  // Infrastructure - RabbitMQ (5)
+  RABBITMQ_HOST: string;
+  RABBITMQ_PORT: string;
+  RABBITMQ_USERNAME: string;
   RABBITMQ_PASSWORD: string;
-  DATABASE_USER: string;
-  DATABASE_PASSWORD: string;
-  DATABASE_HOST: string;
-  DATABASE_NAME: string;
+  RABBITMQ_VIRTUAL_HOST: string;
+
+  // External APIs - Telnyx SMS (6)
+  TELNYX_BASE_URL: string;
+  TELNYX_API_KEY: string;
+  TELNYX_MESSAGING_PROFILE_ID: string;
+  TELNYX_WEBHOOK_KEY: string;
+  TELNYX_WEBHOOK_URL: string;
+  TELNYX_FROM_NUMBER: string;
+
+  // External APIs - SMTP2GO Email (1)
+  SMTP2GO_API_KEY: string;
+
+  // External APIs - Chargebee Billing (4)
+  CHARGEBEE_SITE: string;
+  CHARGEBEE_API_KEY: string;
+  CHARGEBEE_CF_CLIENT_ID: string;
+  CHARGEBEE_CF_CLIENT_SECRET: string;
+
+  // External APIs - Billing Worker (1)
+  BILLING_WORKER_API_KEY: string;
+
+  // Application Secrets - Authentication (4)
+  INVITATION_SIGNING_KEY: string;
+  MFA_SESSION_KEY: string;
   JWT_SECRET: string;
   ENCRYPTION_KEY: string;
+
+  // Application Secrets - Internal API Keys (3)
+  TEXTING_SERVICE_API_KEY: string;
+  TEXTING_NOTIFICATION_KEY: string;
+  FLAGGER_API_KEY: string;
+
+  // SSL/TLS Certificates (2)
   CLOUDFLARE_ORIGIN_CERT: string;
   CLOUDFLARE_ORIGIN_KEY: string;
 }
@@ -103,15 +159,71 @@ export class InfisicalService {
     });
 
     return {
+      // Database Secrets - MySQL Main Data (5)
+      MYSQL_HOST: secrets.MYSQL_HOST || '',
+      MYSQL_PORT: secrets.MYSQL_PORT || '',
+      MYSQL_DATABASE: secrets.MYSQL_DATABASE || '',
+      MYSQL_USERNAME: secrets.MYSQL_USERNAME || '',
+      MYSQL_PASSWORD: secrets.MYSQL_PASSWORD || '',
+
+      // Database Secrets - MySQL Auth (5)
+      AUTH_DB_HOST: secrets.AUTH_DB_HOST || '',
+      AUTH_DB_PORT: secrets.AUTH_DB_PORT || '',
+      AUTH_DB_DATABASE: secrets.AUTH_DB_DATABASE || '',
+      AUTH_DB_USERNAME: secrets.AUTH_DB_USERNAME || '',
+      AUTH_DB_PASSWORD: secrets.AUTH_DB_PASSWORD || '',
+
+      // Database Secrets - MySQL Texting (5)
+      TEXTING_DB_HOST: secrets.TEXTING_DB_HOST || '',
+      TEXTING_DB_PORT: secrets.TEXTING_DB_PORT || '',
+      TEXTING_DB_DATABASE: secrets.TEXTING_DB_DATABASE || '',
+      TEXTING_DB_USERNAME: secrets.TEXTING_DB_USERNAME || '',
+      TEXTING_DB_PASSWORD: secrets.TEXTING_DB_PASSWORD || '',
+
+      // Infrastructure - Redis (3)
+      REDIS_HOST: secrets.REDIS_HOST || '',
+      REDIS_PORT: secrets.REDIS_PORT || '',
       REDIS_PASSWORD: secrets.REDIS_PASSWORD || '',
-      RABBITMQ_USER: secrets.RABBITMQ_USER || 'flagger',
+
+      // Infrastructure - RabbitMQ (5)
+      RABBITMQ_HOST: secrets.RABBITMQ_HOST || '',
+      RABBITMQ_PORT: secrets.RABBITMQ_PORT || '',
+      RABBITMQ_USERNAME: secrets.RABBITMQ_USERNAME || '',
       RABBITMQ_PASSWORD: secrets.RABBITMQ_PASSWORD || '',
-      DATABASE_USER: secrets.DATABASE_USER || 'flagger',
-      DATABASE_PASSWORD: secrets.DATABASE_PASSWORD || '',
-      DATABASE_HOST: secrets.DATABASE_HOST || '',
-      DATABASE_NAME: secrets.DATABASE_NAME || 'flaggerlink',
+      RABBITMQ_VIRTUAL_HOST: secrets.RABBITMQ_VIRTUAL_HOST || '',
+
+      // External APIs - Telnyx SMS (6)
+      TELNYX_BASE_URL: secrets.TELNYX_BASE_URL || '',
+      TELNYX_API_KEY: secrets.TELNYX_API_KEY || '',
+      TELNYX_MESSAGING_PROFILE_ID: secrets.TELNYX_MESSAGING_PROFILE_ID || '',
+      TELNYX_WEBHOOK_KEY: secrets.TELNYX_WEBHOOK_KEY || '',
+      TELNYX_WEBHOOK_URL: secrets.TELNYX_WEBHOOK_URL || '',
+      TELNYX_FROM_NUMBER: secrets.TELNYX_FROM_NUMBER || '',
+
+      // External APIs - SMTP2GO Email (1)
+      SMTP2GO_API_KEY: secrets.SMTP2GO_API_KEY || '',
+
+      // External APIs - Chargebee Billing (4)
+      CHARGEBEE_SITE: secrets.CHARGEBEE_SITE || '',
+      CHARGEBEE_API_KEY: secrets.CHARGEBEE_API_KEY || '',
+      CHARGEBEE_CF_CLIENT_ID: secrets.CHARGEBEE_CF_CLIENT_ID || '',
+      CHARGEBEE_CF_CLIENT_SECRET: secrets.CHARGEBEE_CF_CLIENT_SECRET || '',
+
+      // External APIs - Billing Worker (1)
+      BILLING_WORKER_API_KEY: secrets.BILLING_WORKER_API_KEY || '',
+
+      // Application Secrets - Authentication (4)
+      INVITATION_SIGNING_KEY: secrets.INVITATION_SIGNING_KEY || '',
+      MFA_SESSION_KEY: secrets.MFA_SESSION_KEY || '',
       JWT_SECRET: secrets.JWT_SECRET || '',
       ENCRYPTION_KEY: secrets.ENCRYPTION_KEY || '',
+
+      // Application Secrets - Internal API Keys (3)
+      TEXTING_SERVICE_API_KEY: secrets.TEXTING_SERVICE_API_KEY || '',
+      TEXTING_NOTIFICATION_KEY: secrets.TEXTING_NOTIFICATION_KEY || '',
+      FLAGGER_API_KEY: secrets.FLAGGER_API_KEY || '',
+
+      // SSL/TLS Certificates (2)
       CLOUDFLARE_ORIGIN_CERT: secrets.CLOUDFLARE_ORIGIN_CERT || '',
       CLOUDFLARE_ORIGIN_KEY: secrets.CLOUDFLARE_ORIGIN_KEY || '',
     };

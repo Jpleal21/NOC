@@ -91,6 +91,26 @@
             <option value="development">development</option>
           </select>
         </div>
+
+        <!-- Deployment Profile -->
+        <div>
+          <label class="block text-sm font-medium text-dark-muted mb-1">
+            Deployment Profile
+          </label>
+          <select
+            v-model="form.deployment_profile"
+            required
+            class="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-white
+                   focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          >
+            <option value="core">CORE - Centralized Portal (Default)</option>
+            <option value="full">FULL - Dedicated Portal (Standalone)</option>
+          </select>
+          <p class="mt-1 text-xs text-dark-muted">
+            <strong>CORE:</strong> Uses shared portal.flaggerlink.com for login (worker servers)<br>
+            <strong>FULL:</strong> Deploys local Portal API + UserPortal (standalone systems)
+          </p>
+        </div>
       </div>
 
       <!-- Right Column -->
@@ -295,6 +315,7 @@ const form = reactive({
   vpc_uuid: '',
   droplet_size: 's-2vcpu-4gb',
   branch: 'master',
+  deployment_profile: 'core',
   reserved_ip: '',
   ssh_keys: [],
   firewall_id: '',
@@ -371,6 +392,7 @@ defineExpose({
     deploying.value = false;
     form.server_name = '';
     form.vpc_uuid = '';
+    form.deployment_profile = 'core';
     form.reserved_ip = '';
     form.ssh_keys = [];
     form.firewall_id = '';

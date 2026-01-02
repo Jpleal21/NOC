@@ -173,6 +173,7 @@ app.post('/api/deploy', async (c) => {
       droplet_region,
       vpc_uuid,
       branch,
+      deployment_profile = 'core', // Default to 'core' (centralized portal)
       enable_cloudflare_proxy,
       reserved_ip,
       ssh_keys,
@@ -188,6 +189,7 @@ app.post('/api/deploy', async (c) => {
       droplet_region,
       vpc_uuid,
       branch,
+      deployment_profile,
       enable_cloudflare_proxy,
       reserved_ip,
       ssh_keys: ssh_keys?.length || 0,
@@ -234,6 +236,7 @@ app.post('/api/deploy', async (c) => {
       region: droplet_region,
       branch,
       deployment_type: 'infrastructure',
+      deployment_profile,
       status: 'in_progress',
     });
     console.log('[NOC Worker] Deployment record created with ID:', deploymentId);
@@ -251,7 +254,7 @@ app.post('/api/deploy', async (c) => {
         // Step 2: Render cloud-init template
         console.log('[NOC Worker] Step 2: Render cloud-init template');
         await stream.write('data: ' + JSON.stringify({ step: 'template', message: 'Rendering cloud-init template...' }) + '\n\n');
-        const cloudInit = await renderCloudInit({ secrets, githubToken, branch });
+        const cloudInit = await renderCloudInit({ secrets, githubToken, branch, deploymentProfile: deployment_profile });
         console.log('[NOC Worker] Cloud-init template rendered, length:', cloudInit.length);
 
         // Step 3: Create droplet

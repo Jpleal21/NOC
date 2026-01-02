@@ -7,6 +7,7 @@ interface CloudInitParams {
   secrets: InfisicalSecrets;
   githubToken: string;
   branch: string;
+  deploymentProfile: 'core' | 'full';
 }
 
 // Helper function to indent multi-line strings for YAML
@@ -90,13 +91,28 @@ runcmd:
   - echo "RabbitMQ configured with credentials from environment"
 
   # ========================================================================
-  # Create Directory Structure
+  # Create Directory Structure (Conditional based on deployment profile)
   # ========================================================================
-  - echo "Creating directory structure..."
-  - mkdir -p /opt/flaggerlink/api /opt/flaggerlink/texting /opt/flaggerlink/portal-api /opt/flaggerlink/scripts /opt/flaggerlink/secrets
-  - mkdir -p /var/www/flaggerlink/web /var/www/flaggerlink/portal
+  - echo "Creating directory structure for profile: \${DEPLOYMENT_PROFILE}..."
+
+  # ALWAYS create these (Main API, Texting Service, Web App, common directories)
+  - mkdir -p /opt/flaggerlink/api
+  - mkdir -p /opt/flaggerlink/texting
+  - mkdir -p /opt/flaggerlink/scripts
+  - mkdir -p /opt/flaggerlink/secrets
+  - mkdir -p /var/www/flaggerlink/web
   - mkdir -p /var/log/flaggerlink
   - mkdir -p /etc/ssl/cloudflare
+
+  # ONLY create Portal directories if FULL profile (dedicated portal deployment)
+  - |
+    if [ "\${DEPLOYMENT_PROFILE}" = "full" ]; then
+      mkdir -p /opt/flaggerlink/portal-api
+      mkdir -p /var/www/flaggerlink/portal
+      echo "Portal directories created - FULL profile (dedicated portal)"
+    else
+      echo "Skipping Portal directories - CORE profile (uses centralized portal.flaggerlink.com)"
+    fi
 
   # ========================================================================
   # Clone FlaggerLink Repository
@@ -261,7 +277,7 @@ final_message: |
 `;
 
 export async function renderCloudInit(params: CloudInitParams): Promise<string> {
-  const { secrets, githubToken, branch } = params;
+  const { secrets, githubToken, branch, deploymentProfile } = params;
 
   // Indent SSL certificates for proper YAML formatting (6 spaces)
   const certIndented = indentLines(secrets.CLOUDFLARE_ORIGIN_CERT, 6);
@@ -282,6 +298,7 @@ export async function renderCloudInit(params: CloudInitParams): Promise<string> 
   rendered = rendered.replace(/\$\{ENCRYPTION_KEY\}/g, secrets.ENCRYPTION_KEY);
   rendered = rendered.replace(/\$\{GITHUB_TOKEN\}/g, githubToken);
   rendered = rendered.replace(/\$\{GITHUB_BRANCH\}/g, branch);
+  rendered = rendered.replace(/\$\{DEPLOYMENT_PROFILE\}/g, deploymentProfile);
   rendered = rendered.replace(/\$\{PROVISIONED_TIMESTAMP\}/g, new Date().toISOString());
   rendered = rendered.replace(/\$\{CLOUDFLARE_ORIGIN_CERT_INDENTED\}/g, certIndented);
   rendered = rendered.replace(/\$\{CLOUDFLARE_ORIGIN_KEY_INDENTED\}/g, keyIndented);

@@ -9,6 +9,7 @@ export interface Deployment {
   region?: string;
   branch: string;
   deployment_type: 'infrastructure' | 'application';
+  deployment_profile?: 'core' | 'full';
   status: 'in_progress' | 'success' | 'failed';
   duration?: number; // seconds
   workflow_url?: string;
@@ -39,9 +40,9 @@ export class DatabaseService {
       .prepare(`
         INSERT INTO deployments (
           server_name, droplet_id, ip_address, region, branch,
-          deployment_type, status, workflow_url, created_by
+          deployment_type, deployment_profile, status, workflow_url, created_by
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `)
       .bind(
         deployment.server_name,
@@ -50,6 +51,7 @@ export class DatabaseService {
         deployment.region || null,
         deployment.branch,
         deployment.deployment_type,
+        deployment.deployment_profile || 'core',
         deployment.status,
         deployment.workflow_url || null,
         deployment.created_by || 'noc-platform'

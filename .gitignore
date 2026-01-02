@@ -42,6 +42,9 @@ Thumbs.db
 *.pem
 id_rsa*
 
+# Internal documentation with secrets
+docs-internal/
+
 # Cloudflare
 .wrangler/
 wrangler.toml.local
