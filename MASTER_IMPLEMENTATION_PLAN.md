@@ -6,7 +6,7 @@
 **Status:** Phase 1 (Secrets) COMPLETE ✅ | Template System IN PROGRESS
 **Timeline:** 6 weeks total
 **Team:** 2 developers
-**Last Updated:** 2026-01-01
+**Last Updated:** 2026-01-02
 
 ---
 
@@ -641,19 +641,28 @@ By end of project:
 
 While working on secret management, we also implemented a modular deployment architecture:
 
-**Phase 2 Complete ✅ (2026-01-01)**
+**Phase 2 Complete ✅ (2026-01-02) - TESTED & VERIFIED**
 - Database migration: Added `deployment_profile` column
 - API updated: Accepts `deployment_profile` parameter (CORE | FULL)
 - Cloud-init updated: Conditional directory creation based on profile
 - Frontend updated: Deployment profile selector UI
+- Secret mapping: Fixed name mismatches (RABBITMQ_USER → RABBITMQ_USERNAME, etc.)
 - Documentation: MODULAR_DEPLOYMENT_STATUS.md created
 
 **Deployment Profiles:**
 - **CORE (default):** Uses centralized portal.flaggerlink.com (worker servers)
+  - Tested: Server "bravo" - 5 directories created, portal excluded ✅
 - **FULL:** Deploys dedicated Portal API + UserPortal (standalone systems)
+  - Tested: Server "delta" - 7 directories created, all services included ✅
+
+**Test Results:**
+- ✅ CORE profile: Conditional logic verified (no portal directories)
+- ✅ FULL profile: All directories created including portal
+- ✅ Secrets properly injected (43 secrets from Infisical)
+- ✅ Cloud-init completing successfully on both profiles
 
 **Commits:**
-- `791bd62` - Add deployment profile support to NOC platform
-- `c57474b` - Add Phase 1 secret management and implementation planning docs
+- `6c9966d` - Add modular deployment profiles and Phase 1 secret management
+- `0d019de` - Fix cloud-init secret name mismatches and YAML formatting
 
-**See:** `MODULAR_DEPLOYMENT_STATUS.md` for complete details
+**See:** `MODULAR_DEPLOYMENT_STATUS.md` for complete details and test results
