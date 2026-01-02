@@ -82,11 +82,11 @@ runcmd:
   - systemctl enable rabbitmq-server
   - systemctl start rabbitmq-server
   - sleep 10
-  - RABBITMQ_USER="\${RABBITMQ_USER}"
+  - RABBITMQ_USERNAME="\${RABBITMQ_USERNAME}"
   - RABBITMQ_PASS="\${RABBITMQ_PASSWORD}"
-  - rabbitmqctl add_user "$RABBITMQ_USER" "$RABBITMQ_PASS" || true
-  - rabbitmqctl set_user_tags "$RABBITMQ_USER" administrator
-  - rabbitmqctl set_permissions -p / "$RABBITMQ_USER" ".*" ".*" ".*"
+  - rabbitmqctl add_user "$RABBITMQ_USERNAME" "$RABBITMQ_PASS" || true
+  - rabbitmqctl set_user_tags "$RABBITMQ_USERNAME" administrator
+  - rabbitmqctl set_permissions -p / "$RABBITMQ_USERNAME" ".*" ".*" ".*"
   - rabbitmq-plugins enable rabbitmq_management
   - echo "RabbitMQ configured with credentials from environment"
 
@@ -132,7 +132,7 @@ runcmd:
 
     # Infrastructure
     REDIS_PASSWORD=\${REDIS_PASSWORD}
-    RABBITMQ_USER=\${RABBITMQ_USER}
+    RABBITMQ_USERNAME=\${RABBITMQ_USERNAME}
     RABBITMQ_PASSWORD=\${RABBITMQ_PASSWORD}
 
     # Database (to be configured by deployment)
@@ -257,7 +257,7 @@ final_message: |
     - .NET 8.0 Runtime
     - Nginx
     - Redis (with password configured)
-    - RabbitMQ (user: \${RABBITMQ_USER})
+    - RabbitMQ (user: \${RABBITMQ_USERNAME})
 
   Directories:
     - /opt/flaggerlink/     (API services)
@@ -288,7 +288,7 @@ export async function renderCloudInit(params: CloudInitParams): Promise<string> 
 
   // Replace all occurrences of template variables
   rendered = rendered.replace(/\$\{REDIS_PASSWORD\}/g, secrets.REDIS_PASSWORD);
-  rendered = rendered.replace(/\$\{RABBITMQ_USER\}/g, secrets.RABBITMQ_USERNAME);
+  rendered = rendered.replace(/\$\{RABBITMQ_USERNAME\}/g, secrets.RABBITMQ_USERNAME);
   rendered = rendered.replace(/\$\{RABBITMQ_PASSWORD\}/g, secrets.RABBITMQ_PASSWORD);
   rendered = rendered.replace(/\$\{DATABASE_USER\}/g, secrets.MYSQL_USERNAME);
   rendered = rendered.replace(/\$\{DATABASE_PASSWORD\}/g, secrets.MYSQL_PASSWORD);

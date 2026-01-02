@@ -285,9 +285,9 @@ app.post('/api/deploy', async (c) => {
           let delay = 1000; // Start with 1 second
           const maxDelay = 30000; // Cap at 30 seconds
           const maxTime = 300000; // 5 minutes maximum
-          const startTime = Date.now();
+          const activationStartTime = Date.now();
 
-          while (!dropletActive && (Date.now() - startTime) < maxTime) {
+          while (!dropletActive && (Date.now() - activationStartTime) < maxTime) {
             // Check immediately on first attempt, otherwise wait
             if (attempts > 0) {
               await new Promise(resolve => setTimeout(resolve, delay));
@@ -300,18 +300,18 @@ app.post('/api/deploy', async (c) => {
             attempts++;
 
             if (!dropletActive && attempts % 3 === 0) {
-              const elapsed = Math.floor((Date.now() - startTime) / 1000);
+              const elapsed = Math.floor((Date.now() - activationStartTime) / 1000);
               console.log('[NOC Worker] Still waiting for active status... attempt', attempts, 'elapsed:', elapsed + 's');
             }
           }
 
           if (!dropletActive) {
-            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const elapsed = Math.floor((Date.now() - activationStartTime) / 1000);
             console.error('[NOC Worker] Droplet failed to become active after', elapsed, 'seconds');
             throw new Error('Droplet failed to become active after ' + elapsed + ' seconds');
           }
 
-          const activationTime = Math.floor((Date.now() - startTime) / 1000);
+          const activationTime = Math.floor((Date.now() - activationStartTime) / 1000);
           console.log('[NOC Worker] Droplet is now active after', activationTime, 'seconds');
 
           // Wait for pending events to clear before IP/firewall operations
@@ -358,9 +358,9 @@ app.post('/api/deploy', async (c) => {
         let delay = 1000; // Start with 1 second
         const maxDelay = 30000; // Cap at 30 seconds
         const maxTime = 300000; // 5 minutes maximum
-        const startTime = Date.now();
+        const ipPollStartTime = Date.now();
 
-        while (!ipAddress && (Date.now() - startTime) < maxTime) {
+        while (!ipAddress && (Date.now() - ipPollStartTime) < maxTime) {
           // Check immediately on first attempt, otherwise wait
           if (attempts > 0) {
             await new Promise(resolve => setTimeout(resolve, delay));
@@ -373,18 +373,18 @@ app.post('/api/deploy', async (c) => {
           attempts++;
 
           if (!ipAddress && attempts % 3 === 0) {
-            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const elapsed = Math.floor((Date.now() - ipPollStartTime) / 1000);
             console.log('[NOC Worker] Still waiting for IP... attempt', attempts, 'elapsed:', elapsed + 's');
           }
         }
 
         if (!ipAddress) {
-          const elapsed = Math.floor((Date.now() - startTime) / 1000);
+          const elapsed = Math.floor((Date.now() - ipPollStartTime) / 1000);
           console.error('[NOC Worker] Failed to get IP address after', elapsed, 'seconds');
           throw new Error('Failed to get droplet IP address after ' + elapsed + ' seconds');
         }
 
-        const ipAssignmentTime = Math.floor((Date.now() - startTime) / 1000);
+        const ipAssignmentTime = Math.floor((Date.now() - ipPollStartTime) / 1000);
         console.log('[NOC Worker] IP address assigned after', ipAssignmentTime, 'seconds');
 
         // Use reserved IP if specified, otherwise use droplet IP
@@ -663,8 +663,13 @@ app.get('/api/deployments', async (c) => {
     const server_name = c.req.query('server_name');
     const status = c.req.query('status');
     const deployment_type = c.req.query('deployment_type');
-    const limit = c.req.query('limit') ? parseInt(c.req.query('limit')!) : 50;
-    const offset = c.req.query('offset') ? parseInt(c.req.query('offset')!) : 0;
+
+    // Parse and validate pagination parameters
+    const limitParam = c.req.query('limit');
+    const offsetParam = c.req.query('offset');
+
+    const limit = limitParam ? Math.max(1, Math.min(parseInt(limitParam, 10) || 50, 1000)) : 50;
+    const offset = offsetParam ? Math.max(0, parseInt(offsetParam, 10) || 0) : 0;
 
     const deployments = await db.getDeployments({
       server_name,
