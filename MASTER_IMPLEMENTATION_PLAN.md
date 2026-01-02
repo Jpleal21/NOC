@@ -65,7 +65,7 @@ Week 5-6: Maintenance System
    - Basic cloud-init provisioning
 
 ❌ Secrets in Git
-   - production.json has 22 secrets
+   - production.json has 43 secrets
    - Security risk
    - Can't rotate without redeploy
 
@@ -198,13 +198,13 @@ Week 5-6: Maintenance System
 **Completed Work:**
 
 1. **Configuration Templates** ✅
-   - Created `production.TEMPLATE.json` with 40 placeholders
-   - Created `staging.TEMPLATE.json` with 40 placeholders
+   - Created `production.TEMPLATE.json` with 47 placeholders
+   - Created `staging.TEMPLATE.json` with 47 placeholders
    - Untracked `production.json` and `staging.json` from git
    - Updated `.gitignore` to block secret files permanently
 
 2. **Secret Injection Script** ✅
-   - Created `inject-secrets.sh` (217 lines)
+   - Created `inject-secrets.sh` (208 lines)
    - Implemented Infisical CLI integration (universal auth)
    - Added KEY=VALUE parsing for v0.38.0 compatibility
    - Includes JSON validation and error handling
@@ -219,8 +219,8 @@ Week 5-6: Maintenance System
 
 4. **Infisical Setup** ✅
    - All 43 secrets entered (staging + production)
-   - 40 application secrets for FlaggerLink services
-   - 3 infrastructure secrets for NOC cloud-init
+   - 47 FlaggerLink template placeholders (some secrets used in multiple places)
+   - 3 additional infrastructure secrets for NOC cloud-init
    - Universal auth credentials generated
 
 **Git Commits:**
@@ -229,7 +229,7 @@ Week 5-6: Maintenance System
 
 **Test Results:**
 - ✅ Script authenticated with Infisical successfully
-- ✅ All 40 placeholders replaced (0 remaining)
+- ✅ All 47 placeholders replaced (0 remaining)
 - ✅ Generated JSON validated successfully
 - ✅ Sample secrets verified (MySQL, JWT, Telnyx, SMTP2GO)
 
@@ -305,11 +305,11 @@ Maintenance System
 ### Milestone 1: Templates Committed (End of Week 2) ✅ COMPLETE
 - ✅ Zero secrets in git (production.json, staging.json untracked)
 - ✅ Templates in FlaggerLink repo (commits: 3b893d2b, 9b8a1d3a)
-- ✅ All secrets in Infisical (43 total: 40 app + 3 infrastructure)
+- ✅ All secrets in Infisical (43 unique secrets, 47 template placeholders)
 - ✅ Template injection tested locally (staging environment successful)
 
 **Exit Criteria:**
-- [x] inject-secrets.sh script works ✅ (all 40 placeholders replaced)
+- [x] inject-secrets.sh script works ✅ (all 47 placeholders replaced)
 - [x] JSON validation passes ✅ (python3 json.tool successful)
 - [x] GitHub Actions workflow updated ✅ (secret injection step added)
 - [ ] Full deployment test pending (requires GitHub secrets setup)
@@ -368,26 +368,27 @@ Maintenance System
 ```
 /mnt/c/source/NOC/
 ├── docs/
-│   ├── MASTER_IMPLEMENTATION_PLAN.md            (NEW - this file)
-│   ├── TEMPLATE_SECRET_INJECTION_PLAN.md        (NEW)
-│   ├── INFISICAL_SECRET_INVENTORY.md            (NEW)
-│   ├── CLOUD_INIT_SPECIFICATION.md              (NEW - versions)
+│   ├── MASTER_IMPLEMENTATION_PLAN.md            (EXISTING - this file)
 │   └── NOC_MAINTENANCE_SYSTEM_PLAN.md           (EXISTING)
+├── docs-internal/
+│   ├── TEMPLATE_SECRET_INJECTION_PLAN.md        (EXISTING - security)
+│   └── INFISICAL_SECRET_INVENTORY.md            (EXISTING - security)
 ├── worker/
 │   ├── src/
 │   │   ├── lib/
 │   │   │   └── cloud-init.ts                    (UPDATED - v3)
 │   │   └── services/
-│   │       ├── ssh.ts                           (NEW - SSH bridge client)
-│   │       └── database.ts                      (UPDATED - maintenance tables)
+│   │       ├── ssh.ts                           (PLANNED - Phase 5-6)
+│   │       └── database.ts                      (UPDATED - deployment_profile)
 │   └── migrations/
-│       └── 002_add_maintenance_system.sql       (NEW)
+│       ├── 001_initial_schema.sql               (EXISTING)
+│       └── 002_add_deployment_profile.sql       (EXISTING)
 ├── frontend/
 │   └── src/
 │       └── components/
 │           └── tabs/
-│               └── MaintenanceTab.vue           (NEW)
-└── noc-ssh-bridge/                              (NEW - separate service)
+│               └── MaintenanceTab.vue           (PLANNED - Phase 5-6)
+└── noc-ssh-bridge/                              (PLANNED - Phase 5-6)
     ├── index.js
     ├── package.json
     └── .env.example
@@ -441,7 +442,7 @@ Maintenance System
 ### Week 2: Template System Testing
 - [ ] Unit test: inject-secrets.sh with sample data
 - [ ] Integration test: Deploy test droplet
-- [ ] Validation test: Verify all 22 secrets injected
+- [ ] Validation test: Verify all 47 FlaggerLink placeholders replaced
 - [ ] Security test: Confirm no secrets in git
 
 ### Week 4: Infisical Agent Testing
@@ -532,10 +533,10 @@ Maintenance System
 
 ## Success Criteria
 
-### Phase 1: Templates (Week 2) ✅ COMPLETE
+### Phase 1: Templates (Week 2) ✅ 85% COMPLETE
 - [x] Zero secrets committed to git ✅
 - [ ] Can deploy droplet with templates (GitHub Actions ready, droplet testing pending)
-- [x] All 43 secrets in Infisical ✅ (40 app secrets + 3 infrastructure)
+- [x] All 43 secrets in Infisical ✅ (47 placeholders in templates)
 - [x] Template injection tested successfully ✅ (local testing complete)
 
 ### Phase 2: Infisical Agent (Week 4)
