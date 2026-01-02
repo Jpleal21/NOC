@@ -263,6 +263,10 @@ const deleteConfirmation = ref('');
 const showTagsModal = ref(false);
 const selectedServerForTags = ref(null);
 
+// Request cancellation for race condition prevention
+let loadServersController = null;
+let loadDeploymentsController = null;
+
 // Settings
 const darkMode = ref(true);
 onMounted(() => {
@@ -282,6 +286,12 @@ function toggleDarkMode() {
 }
 
 async function loadServers() {
+  // Cancel previous request if still pending
+  if (loadServersController) {
+    loadServersController.abort();
+  }
+  loadServersController = new AbortController();
+
   loadingServers.value = true;
   try {
     const result = await api.getServers();
@@ -300,6 +310,9 @@ async function loadServers() {
       tabs.value[0].count = serversWithTags.length;
     }
   } catch (error) {
+    // Ignore aborted requests
+    if (error.name === 'AbortError') return;
+
     console.error('Failed to load servers:', error);
     toast.error('Failed to load servers', {
       description: error.message
@@ -307,10 +320,17 @@ async function loadServers() {
     servers.value = [];
   } finally {
     loadingServers.value = false;
+    loadServersController = null;
   }
 }
 
 async function loadDeployments() {
+  // Cancel previous request if still pending
+  if (loadDeploymentsController) {
+    loadDeploymentsController.abort();
+  }
+  loadDeploymentsController = new AbortController();
+
   loadingDeployments.value = true;
   try {
     const result = await api.getDeployments({ limit: 50 });
@@ -322,6 +342,9 @@ async function loadDeployments() {
       }));
     }
   } catch (error) {
+    // Ignore aborted requests
+    if (error.name === 'AbortError') return;
+
     console.error('Failed to load deployments:', error);
     toast.error('Failed to load deployments', {
       description: error.message
@@ -329,6 +352,7 @@ async function loadDeployments() {
     deployments.value = [];
   } finally {
     loadingDeployments.value = false;
+    loadDeploymentsController = null;
   }
 }
 

@@ -8,6 +8,7 @@ export function useDeploymentStream() {
   const isStreaming = ref(false)
   const currentStep = ref(null)
   const currentMessage = ref(null)
+  let activeReader = null // Track active reader for cleanup
 
   async function startDeployment(config) {
     isStreaming.value = true
@@ -34,6 +35,7 @@ export function useDeploymentStream() {
       }
 
       const reader = response.body.getReader()
+      activeReader = reader // Store for cleanup
       const decoder = new TextDecoder()
       let buffer = ''
 
@@ -84,15 +86,27 @@ export function useDeploymentStream() {
       }
 
       isStreaming.value = false
+      activeReader = null
       return { success: true }
 
     } catch (error) {
       console.error('[SSE] Stream error:', error)
       isStreaming.value = false
+      activeReader = null
       toast.error('Deployment failed', {
         description: error.message
       })
       return { success: false, error: error.message }
+    }
+  }
+
+  // Cleanup function to cancel active stream
+  function cleanup() {
+    if (activeReader) {
+      activeReader.cancel()
+      activeReader = null
+      isStreaming.value = false
+      console.log('[SSE] Stream cancelled on cleanup')
     }
   }
 
@@ -117,6 +131,7 @@ export function useDeploymentStream() {
     isStreaming,
     currentStep,
     currentMessage,
-    startDeployment
+    startDeployment,
+    cleanup
   }
 }

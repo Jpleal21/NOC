@@ -28,15 +28,20 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import DeploymentForm from '../components/DeploymentForm.vue'
 import { useDeploymentStream } from '../composables/useDeploymentStream'
 import { toast } from 'vue-sonner'
 
 const router = useRouter()
-const { startDeployment, isStreaming, currentStep, currentMessage } = useDeploymentStream()
+const { startDeployment, isStreaming, currentStep, currentMessage, cleanup } = useDeploymentStream()
 const formRef = ref(null)
+
+// Cleanup SSE stream on unmount to prevent memory leak
+onBeforeUnmount(() => {
+  cleanup()
+})
 
 async function handleDeploy(config) {
   toast.info(`Starting deployment for ${config.server_name}`, {
