@@ -1,26 +1,5 @@
 <template>
-  <div class="bg-dark-card border border-dark-border rounded-lg shadow-sm">
-    <!-- Header -->
-    <div class="px-6 py-4 border-b border-dark-border flex items-center justify-between">
-      <div>
-        <h2 class="text-lg font-semibold text-white">DNS Records</h2>
-        <p class="text-sm text-dark-muted mt-1">
-          All DNS records across NOC-managed servers
-        </p>
-      </div>
-      <button
-        @click="$emit('refresh')"
-        class="px-3 py-2 text-sm bg-dark-hover hover:bg-dark-border text-dark-muted hover:text-white
-               rounded-lg transition-colors flex items-center space-x-2"
-      >
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-        </svg>
-        <span>Refresh</span>
-      </button>
-    </div>
-
+  <div class="bg-dark-surface border border-dark-border rounded-lg">
     <!-- Table -->
     <div class="overflow-x-auto">
       <table class="min-w-full divide-y divide-dark-border">

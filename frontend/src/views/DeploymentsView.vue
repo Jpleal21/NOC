@@ -1,5 +1,11 @@
 <template>
-  <div>
+  <div class="page-container">
+    <!-- Page Header -->
+    <PageHeader
+      title="Deployments"
+      subtitle="View deployment history and track infrastructure provisioning"
+    />
+
     <!-- Stats Cards -->
     <div class="mb-6">
       <div class="grid grid-cols-4 gap-4">
@@ -131,6 +137,7 @@
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
+import PageHeader from '../components/PageHeader.vue'
 import { useDeploymentsStore } from '../stores/deployments'
 import { formatRelativeDate as formatDate } from '../utils/date'
 

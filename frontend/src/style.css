@@ -63,6 +63,12 @@
 }
 
 @layer components {
+  /* Page container - consistent spacing across all views */
+  .page-container {
+    padding: 0;
+    width: 100%;
+  }
+
   /* Mobile touch targets - ensure minimum 44x44px touch area */
   @media screen and (max-width: 767px) {
     button,

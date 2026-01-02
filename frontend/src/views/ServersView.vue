@@ -1,5 +1,11 @@
 <template>
-  <div>
+  <div class="page-container">
+    <!-- Page Header -->
+    <PageHeader
+      title="Servers"
+      subtitle="Manage your deployed FlaggerLink servers"
+    />
+
     <!-- Servers Tab Content -->
     <ServersTab
       :servers="servers"
@@ -109,6 +115,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { toast } from 'vue-sonner';
 import api from '../services/api';
+import PageHeader from '../components/PageHeader.vue';
 import ServersTab from '../components/tabs/ServersTab.vue';
 import TagsModal from '../components/TagsModal.vue';
 import { useServersStore } from '../stores/servers';
