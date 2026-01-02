@@ -172,7 +172,7 @@ setActiveTab();
   left: 0;
   right: 0;
   height: 60px;
-  background: #111827;
+  background: #121212;
   z-index: 1000;
   padding: 0 1rem;
   align-items: center;
@@ -326,7 +326,7 @@ setActiveTab();
   flex-direction: column;
   align-items: flex-start;
   overflow: hidden;
-  background-color: #111827;
+  background-color: #121212;
 }
 
 .navigation-panel:hover {
