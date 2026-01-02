@@ -415,14 +415,12 @@ app.post('/api/deploy', async (c) => {
         await dnsService.createServerRecords(server_name, finalIP, enable_cloudflare_proxy || false);
         console.log('[NOC Worker] DNS records created');
 
-        // Step 5a: Add tags if provided
+        // Step 5a: Add tags if provided (batch operation)
         if (tags && tags.length > 0) {
-          console.log('[NOC Worker] Adding tags to server:', tags);
+          console.log('[NOC Worker] Adding', tags.length, 'tags to server in batch:', tags);
           await stream.write('data: ' + JSON.stringify({ step: 'tags', message: `Adding ${tags.length} tag(s)...` }) + '\n\n');
-          for (const tag of tags) {
-            await db.addServerTag(server_name, tag);
-          }
-          console.log('[NOC Worker] Tags added successfully');
+          await db.addServerTags(server_name, tags);
+          console.log('[NOC Worker] Tags added successfully (batch operation)');
         }
 
         // Step 6: Complete or fail based on critical failures

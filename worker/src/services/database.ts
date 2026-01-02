@@ -221,6 +221,22 @@ export class DatabaseService {
   }
 
   /**
+   * Add multiple tags to a server in a single batch operation
+   */
+  async addServerTags(server_name: string, tags: string[]): Promise<void> {
+    if (tags.length === 0) return;
+
+    // Use D1 batch API for efficient multi-row insert
+    const statements = tags.map(tag =>
+      this.db
+        .prepare('INSERT OR IGNORE INTO server_tags (server_name, tag) VALUES (?, ?)')
+        .bind(server_name, tag)
+    );
+
+    await this.db.batch(statements);
+  }
+
+  /**
    * Remove a tag from a server
    */
   async removeServerTag(server_name: string, tag: string): Promise<void> {
