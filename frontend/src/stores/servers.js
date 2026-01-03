@@ -53,10 +53,21 @@ export const useServersStore = defineStore('servers', {
         if (result.success) {
           console.log('[ServersStore] Received', result.servers.length, 'servers')
 
-          // Tags are already included in the servers response from DigitalOcean API
-          // No need to fetch them separately (that was overwriting DO tags with empty NOC tags)
-          this.servers = result.servers
-          console.log('[ServersStore] Servers loaded with tags from DigitalOcean')
+          // Fetch NOC custom tags for each server and merge with DO tags
+          const serversWithBothTags = await Promise.all(
+            result.servers.map(async (server) => {
+              const nocTagsResult = await api.getServerTags(server.name, options.signal)
+              return {
+                ...server,
+                do_tags: server.tags || [],  // DigitalOcean tags (read-only)
+                noc_tags: nocTagsResult.success ? nocTagsResult.tags : [],  // NOC custom tags (editable)
+                tags: server.tags || []  // Keep original for compatibility
+              }
+            })
+          )
+
+          this.servers = serversWithBothTags
+          console.log('[ServersStore] Servers loaded with both DO tags and NOC tags')
         }
       } catch (error) {
         console.error('[ServersStore] Failed to fetch servers:', error)
