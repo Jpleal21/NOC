@@ -104,6 +104,8 @@
 </template>
 
 <script setup>
+import { toast } from 'vue-sonner';
+
 defineProps({
   records: {
     type: Array,
@@ -117,7 +119,25 @@ defineProps({
 
 defineEmits(['refresh']);
 
-function copyToClipboard(text) {
-  navigator.clipboard.writeText(text);
+async function copyToClipboard(text) {
+  // Check if clipboard API is available
+  if (!navigator.clipboard) {
+    toast.error('Clipboard not supported', {
+      description: 'Your browser does not support clipboard operations (HTTPS required)'
+    });
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.success('Copied to clipboard', {
+      description: text
+    });
+  } catch (error) {
+    console.error('[DNSTab] Failed to copy to clipboard:', error);
+    toast.error('Failed to copy', {
+      description: error.message || 'Clipboard permission denied'
+    });
+  }
 }
 </script>

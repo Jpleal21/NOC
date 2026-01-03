@@ -9,11 +9,15 @@ export function useDeploymentStream() {
   const currentStep = ref(null)
   const currentMessage = ref(null)
   let activeReader = null // Track active reader for cleanup
+  let abortController = null // Track AbortController for proper request cancellation
 
   async function startDeployment(config) {
     isStreaming.value = true
     currentStep.value = null
     currentMessage.value = null
+
+    // Create AbortController for this deployment stream
+    abortController = new AbortController()
 
     // Reset and initialize deployment progress
     deploymentsStore.resetDeploymentProgress()
@@ -36,7 +40,8 @@ export function useDeploymentStream() {
           'CF-Access-Client-Id': import.meta.env.VITE_CF_ACCESS_CLIENT_ID || '',
           'CF-Access-Client-Secret': import.meta.env.VITE_CF_ACCESS_CLIENT_SECRET || '',
         },
-        body: JSON.stringify(config)
+        body: JSON.stringify(config),
+        signal: abortController.signal // Add abort signal for proper cleanup
       })
 
       if (!response.ok) {
@@ -113,27 +118,48 @@ export function useDeploymentStream() {
 
       isStreaming.value = false
       activeReader = null
+      abortController = null
       return { success: true }
 
     } catch (error) {
       console.error('[SSE] Stream error:', error)
       isStreaming.value = false
       activeReader = null
-      toast.error('Deployment failed', {
-        description: error.message
-      })
+      abortController = null
+
+      // Don't show error toast if request was aborted (user navigated away)
+      if (error.name !== 'AbortError') {
+        toast.error('Deployment failed', {
+          description: error.message
+        })
+      }
       return { success: false, error: error.message }
     }
   }
 
   // Cleanup function to cancel active stream
   function cleanup() {
-    if (activeReader) {
-      console.log('[SSE] Stream cancelled on cleanup')
-      activeReader.cancel()
-      activeReader = null
-      isStreaming.value = false
+    console.log('[SSE] Cleanup called, isStreaming:', isStreaming.value)
+
+    // Abort the fetch request (most reliable way to stop SSE)
+    if (abortController) {
+      console.log('[SSE] Aborting fetch request')
+      abortController.abort()
+      abortController = null
     }
+
+    // Also cancel the reader if it exists
+    if (activeReader) {
+      console.log('[SSE] Cancelling reader')
+      try {
+        activeReader.cancel()
+      } catch (e) {
+        console.error('[SSE] Error cancelling reader:', e)
+      }
+      activeReader = null
+    }
+
+    isStreaming.value = false
   }
 
   function getProgressPercentage(step) {

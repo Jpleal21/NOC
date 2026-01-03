@@ -70,7 +70,7 @@
 </template>
 
 <script setup>
-import { ref, h, watch } from 'vue';
+import { ref, h, watch, onBeforeUnmount } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useSettingsStore } from '../stores/settings';
 
@@ -161,6 +161,13 @@ const setActiveTab = () => {
 
 // Set active tab on mount
 setActiveTab();
+
+// Cleanup: Restore body scroll on unmount
+onBeforeUnmount(() => {
+  if (mobileMenuOpen.value) {
+    document.body.style.overflow = '';
+  }
+});
 </script>
 
 <style scoped>
