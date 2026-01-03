@@ -150,9 +150,14 @@ export const useDeploymentsStore = defineStore('deployments', {
     },
 
     setApplicationDeploymentStarted(url) {
+      this.deploymentProgress.applicationDeploying = true  // Fixed: should be TRUE when deployment starts
+      this.deploymentProgress.applicationDeployed = false  // Fixed: should be FALSE until deployment completes
+      this.deploymentProgress.workflowUrl = url
+    },
+
+    setApplicationDeploymentComplete() {
       this.deploymentProgress.applicationDeploying = false
       this.deploymentProgress.applicationDeployed = true
-      this.deploymentProgress.workflowUrl = url
     },
 
     setApplicationDeploymentError() {

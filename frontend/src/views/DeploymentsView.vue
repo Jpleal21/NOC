@@ -156,10 +156,16 @@ onBeforeUnmount(() => {
 // Start polling for in-progress deployments
 function startPolling() {
   // Poll every 10 seconds to check for in-progress deployments
-  pollIntervalId.value = setInterval(() => {
+  pollIntervalId.value = setInterval(async () => {
     // Only poll if there are in-progress deployments
     if (store.deploymentStats.in_progress > 0) {
-      store.fetchDeployments()
+      try {
+        await store.fetchDeployments()
+      } catch (error) {
+        console.error('[DeploymentsView] Polling error:', error)
+        // Don't show toast for polling errors (too noisy), just log them
+        // If errors persist, polling will continue trying
+      }
     }
   }, 10000) // 10 seconds
 }

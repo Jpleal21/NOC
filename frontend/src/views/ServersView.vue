@@ -159,12 +159,15 @@ async function loadServers() {
     }
 
     // Create new AbortController for this request
-    abortController.value = new AbortController();
+    const controller = new AbortController();
+    abortController.value = controller;
 
-    await serversStore.fetchServers({ signal: abortController.value.signal });
+    await serversStore.fetchServers({ signal: controller.signal });
 
-    // Clear AbortController after successful completion
-    abortController.value = null;
+    // Only clear if this controller is still the current one (prevents race condition)
+    if (abortController.value === controller) {
+      abortController.value = null;
+    }
   } catch (error) {
     // Don't show error if request was aborted
     if (error.name === 'AbortError') {

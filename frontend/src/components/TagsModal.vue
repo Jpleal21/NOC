@@ -86,6 +86,7 @@
 
 <script setup>
 import { ref } from 'vue';
+import { toast } from 'vue-sonner';
 import api from '../services/api';
 
 const props = defineProps({
@@ -107,19 +108,47 @@ async function addTag() {
     return;
   }
 
-  const result = await api.addServerTag(props.server.name, tag);
-  if (result.success) {
-    tags.value.push(tag);
-    newTag.value = '';
-    emit('tags-updated', { server: props.server.name, tags: tags.value });
+  try {
+    const result = await api.addServerTag(props.server.name, tag);
+    if (result.success) {
+      tags.value.push(tag);
+      newTag.value = '';
+      emit('tags-updated', { server: props.server.name, tags: tags.value });
+      toast.success('Tag added', {
+        description: `Added tag "${tag}" to ${props.server.name}`
+      });
+    } else {
+      toast.error('Failed to add tag', {
+        description: result.error || 'Unknown error occurred'
+      });
+    }
+  } catch (error) {
+    console.error('[TagsModal] Failed to add tag:', error);
+    toast.error('Failed to add tag', {
+      description: error.message || 'Network error occurred'
+    });
   }
 }
 
 async function removeTag(tag) {
-  const result = await api.removeServerTag(props.server.name, tag);
-  if (result.success) {
-    tags.value = tags.value.filter(t => t !== tag);
-    emit('tags-updated', { server: props.server.name, tags: tags.value });
+  try {
+    const result = await api.removeServerTag(props.server.name, tag);
+    if (result.success) {
+      tags.value = tags.value.filter(t => t !== tag);
+      emit('tags-updated', { server: props.server.name, tags: tags.value });
+      toast.success('Tag removed', {
+        description: `Removed tag "${tag}" from ${props.server.name}`
+      });
+    } else {
+      toast.error('Failed to remove tag', {
+        description: result.error || 'Unknown error occurred'
+      });
+    }
+  } catch (error) {
+    console.error('[TagsModal] Failed to remove tag:', error);
+    toast.error('Failed to remove tag', {
+      description: error.message || 'Network error occurred'
+    });
   }
 }
 </script>

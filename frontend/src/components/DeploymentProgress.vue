@@ -129,7 +129,7 @@ const showProgress = computed(() => steps.value.length > 0);
 function emitDeployApplication() {
   if (!deploymentResult.value) return;
 
-  deploymentsStore.deploymentProgress.applicationDeploying = true;
+  // Fixed: Don't directly mutate store - state will be set by Dashboard.vue after API call succeeds
   emit('deployApplication', {
     droplet_id: deploymentResult.value.droplet_id,
     ip_address: deploymentResult.value.ip_address,
