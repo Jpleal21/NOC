@@ -34,11 +34,18 @@
             />
             <button
               @click="addTag"
-              :disabled="!newTag.trim()"
+              :disabled="!newTag.trim() || isAdding"
               class="px-4 py-2 bg-primary-500 hover:bg-primary-600 disabled:bg-dark-hover
-                     disabled:text-dark-muted text-white rounded-lg transition-colors font-medium"
+                     disabled:text-dark-muted text-white rounded-lg transition-colors font-medium min-w-[80px]"
             >
-              Add
+              <span v-if="!isAdding">Add</span>
+              <span v-else class="inline-flex items-center">
+                <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Adding...
+              </span>
             </button>
           </div>
         </div>
@@ -60,10 +67,15 @@
               {{ tag }}
               <button
                 @click="removeTag(tag)"
-                class="ml-2 text-blue-400 hover:text-red-400 transition-colors"
+                :disabled="removingTags.has(tag)"
+                class="ml-2 text-blue-400 hover:text-red-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg v-if="!removingTags.has(tag)" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                <svg v-else class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
               </button>
             </span>
@@ -100,14 +112,18 @@ const emit = defineEmits(['close', 'tags-updated']);
 
 const tags = ref([...(props.server.tags || [])]);
 const newTag = ref('');
+const isAdding = ref(false); // Loading state for add operation
+const removingTags = ref(new Set()); // Track which tags are being removed
 
 async function addTag() {
+  if (isAdding.value) return; // Prevent duplicate requests
   const tag = newTag.value.trim();
   if (!tag || tags.value.includes(tag)) {
     newTag.value = '';
     return;
   }
 
+  isAdding.value = true; // Start loading
   try {
     const result = await api.addServerTag(props.server.name, tag);
     if (result.success) {
@@ -127,10 +143,15 @@ async function addTag() {
     toast.error('Failed to add tag', {
       description: error.message || 'Network error occurred'
     });
+  } finally {
+    isAdding.value = false; // End loading
   }
 }
 
 async function removeTag(tag) {
+  if (removingTags.value.has(tag)) return; // Prevent duplicate requests
+  removingTags.value.add(tag); // Mark as removing
+
   try {
     const result = await api.removeServerTag(props.server.name, tag);
     if (result.success) {
@@ -149,6 +170,8 @@ async function removeTag(tag) {
     toast.error('Failed to remove tag', {
       description: error.message || 'Network error occurred'
     });
+  } finally {
+    removingTags.value.delete(tag); // Unmark
   }
 }
 </script>

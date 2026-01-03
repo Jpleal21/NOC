@@ -54,16 +54,24 @@ async function loadDNS() {
       // Map Cloudflare DNS records to our display format
       dnsRecords.value = result.records
         .filter(record => record.type === 'A' && record.name.includes('flaggerlink.com'))
-        .map(record => ({
-          id: record.id,
-          name: record.name,
-          content: record.content,
-          proxied: record.proxied,
-          type: record.type,
-          ttl: record.ttl,
-          created_on: record.created_on,
-          modified_on: record.modified_on
-        }))
+        .map(record => {
+          // Extract server name from DNS record
+          // Examples: "alpha.flaggerlink.com" → "alpha", "alpha-api.flaggerlink.com" → "alpha"
+          const nameParts = record.name.split('.flaggerlink.com')[0];
+          const server_name = nameParts.split('-')[0]; // Take first part before any hyphens
+
+          return {
+            id: record.id,
+            name: record.name,
+            server_name: server_name, // Added: Extract server name from DNS record
+            content: record.content,
+            proxied: record.proxied,
+            type: record.type,
+            ttl: record.ttl,
+            created_on: record.created_on,
+            modified_on: record.modified_on
+          };
+        })
         .sort((a, b) => a.name.localeCompare(b.name));
 
       console.log('[DNSView] Displaying', dnsRecords.value.length, 'filtered DNS records');

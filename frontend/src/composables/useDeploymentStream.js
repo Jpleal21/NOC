@@ -6,15 +6,12 @@ import { API_BASE_URL } from '../config/api'
 export function useDeploymentStream() {
   const deploymentsStore = useDeploymentsStore()
   const isStreaming = ref(false)
-  const currentStep = ref(null)
-  const currentMessage = ref(null)
+  // Removed: currentStep and currentMessage refs (unused - data is in Pinia store)
   let activeReader = null // Track active reader for cleanup
   let abortController = null // Track AbortController for proper request cancellation
 
   async function startDeployment(config) {
     isStreaming.value = true
-    currentStep.value = null
-    currentMessage.value = null
 
     // Create AbortController for this deployment stream
     abortController = new AbortController()
@@ -76,10 +73,7 @@ export function useDeploymentStream() {
               const event = JSON.parse(data)
               console.log('[SSE] Event:', event)
 
-              currentStep.value = event.step
-              currentMessage.value = event.message
-
-              // Update Pinia store progress
+              // Update Pinia store progress (currentStep/currentMessage removed - unused)
               deploymentsStore.updateProgress(event.step, event.message, getProgressPercentage(event.step))
 
               // Show toast for major milestones
@@ -181,8 +175,6 @@ export function useDeploymentStream() {
 
   return {
     isStreaming,
-    currentStep,
-    currentMessage,
     startDeployment,
     cleanup
   }
