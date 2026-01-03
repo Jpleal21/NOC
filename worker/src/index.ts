@@ -428,14 +428,19 @@ app.post('/api/deploy', async (c) => {
 
         if (criticalFailures.length > 0) {
           console.error('[NOC Worker] Deployment FAILED due to critical errors:', criticalFailures);
-          await db.updateDeployment(deploymentId, {
-            status: 'failed',
-            duration,
-            droplet_id: droplet.id,
-            ip_address: finalIP,
-            error_message: criticalFailures.join('; ')
-          });
-          console.log('[NOC Worker] Deployment record updated with failure');
+          try {
+            await db.updateDeployment(deploymentId, {
+              status: 'failed',
+              duration,
+              droplet_id: droplet.id,
+              ip_address: finalIP,
+              error_message: criticalFailures.join('; ')
+            });
+            console.log('[NOC Worker] Deployment record updated with failure');
+          } catch (dbError: any) {
+            console.error('[NOC Worker] CRITICAL: Failed to update deployment record with failure status:', dbError.message);
+            // Don't throw - deployment already failed, we want to inform user via SSE
+          }
 
           await stream.write('data: ' + JSON.stringify({
             step: 'failed',
@@ -446,13 +451,18 @@ app.post('/api/deploy', async (c) => {
           }) + '\n\n');
         } else {
           console.log('[NOC Worker] Deployment complete!');
-          await db.updateDeployment(deploymentId, {
-            status: 'success',
-            duration,
-            droplet_id: droplet.id,
-            ip_address: finalIP,
-          });
-          console.log('[NOC Worker] Deployment record updated with success');
+          try {
+            await db.updateDeployment(deploymentId, {
+              status: 'success',
+              duration,
+              droplet_id: droplet.id,
+              ip_address: finalIP,
+            });
+            console.log('[NOC Worker] Deployment record updated with success');
+          } catch (dbError: any) {
+            console.error('[NOC Worker] CRITICAL: Failed to update deployment record with success status:', dbError.message);
+            // Don't throw - deployment succeeded, we want to inform user via SSE
+          }
 
           await stream.write('data: ' + JSON.stringify({
             step: 'completed',
@@ -466,12 +476,17 @@ app.post('/api/deploy', async (c) => {
       } catch (error: any) {
         console.error('[NOC Worker] Deployment error:', error);
         const duration = Math.floor((Date.now() - startTime) / 1000);
-        await db.updateDeployment(deploymentId, {
-          status: 'failed',
-          duration,
-          error_message: error.message,
-        });
-        console.log('[NOC Worker] Deployment record updated with failure');
+        try {
+          await db.updateDeployment(deploymentId, {
+            status: 'failed',
+            duration,
+            error_message: error.message,
+          });
+          console.log('[NOC Worker] Deployment record updated with failure');
+        } catch (dbError: any) {
+          console.error('[NOC Worker] CRITICAL: Failed to update deployment record in catch block:', dbError.message);
+          // Don't throw - we're already in error handler, want to inform user via SSE
+        }
         await stream.write('data: ' + JSON.stringify({ step: 'error', message: error.message }) + '\n\n');
       }
     });
@@ -604,8 +619,9 @@ app.post('/api/deploy/application', async (c) => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
 
+    let runsResponse: Response | null = null;
     try {
-      var runsResponse = await fetch(
+      runsResponse = await fetch(
         'https://api.github.com/repos/RichardHorwath/FlaggerLink/actions/workflows/noc-deploy-application.yml/runs?per_page=1',
         {
           headers: {
@@ -620,16 +636,21 @@ app.post('/api/deploy/application', async (c) => {
     } catch (fetchError: any) {
       console.warn('[NOC Worker] Failed to fetch workflow run URL:', fetchError.message);
       // Non-critical - workflow was triggered successfully, just couldn't get the URL
-      var runsResponse = { ok: false } as Response;
+      runsResponse = null;
     } finally {
       clearTimeout(timeoutId);
     }
 
     let workflowRunUrl = 'https://github.com/RichardHorwath/FlaggerLink/actions';
-    if (runsResponse.ok) {
-      const runsData = await runsResponse.json();
-      if (runsData.workflow_runs && runsData.workflow_runs.length > 0) {
-        workflowRunUrl = runsData.workflow_runs[0].html_url;
+    if (runsResponse && runsResponse.ok) {
+      try {
+        const runsData = await runsResponse.json();
+        if (runsData.workflow_runs && runsData.workflow_runs.length > 0) {
+          workflowRunUrl = runsData.workflow_runs[0].html_url;
+        }
+      } catch (jsonError: any) {
+        console.warn('[NOC Worker] Failed to parse workflow runs response:', jsonError.message);
+        // Use default URL
       }
     }
 
