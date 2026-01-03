@@ -1,5 +1,5 @@
 <template>
-  <Toaster position="top-right" richColors />
+  <Toaster position="bottom-right" theme="dark" richColors />
   <router-view />
 </template>
 
