@@ -1,8 +1,20 @@
 <template>
   <div v-if="isDeploying || showProgress" class="bg-dark-card border border-dark-border rounded-lg shadow-lg p-6">
-    <h2 class="text-xl font-semibold text-white mb-4">
-      Deployment Progress
-    </h2>
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-xl font-semibold text-white">
+        Deployment Progress
+      </h2>
+      <button
+        v-if="deploymentComplete || deploymentError"
+        @click="closeProgress"
+        class="text-dark-muted hover:text-white transition-colors"
+        title="Close"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
 
     <div class="space-y-3">
       <div
@@ -134,6 +146,10 @@ function emitDeployApplication() {
     droplet_id: deploymentResult.value.droplet_id,
     ip_address: deploymentResult.value.ip_address,
   });
+}
+
+function closeProgress() {
+  deploymentsStore.resetDeploymentProgress();
 }
 
 function getStepClass(step) {

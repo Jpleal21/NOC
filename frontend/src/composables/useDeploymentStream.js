@@ -73,8 +73,11 @@ export function useDeploymentStream() {
               const event = JSON.parse(data)
               console.log('[SSE] Event:', event)
 
-              // Update Pinia store progress (currentStep/currentMessage removed - unused)
-              deploymentsStore.updateProgress(event.step, event.message, getProgressPercentage(event.step))
+              // Update Pinia store progress - mark previous step as complete before adding new one
+              if (event.step !== 'completed' && event.step !== 'failed') {
+                deploymentsStore.updateLastStep('complete') // Mark previous step complete
+                deploymentsStore.updateProgress(event.step, event.message, getProgressPercentage(event.step))
+              }
 
               // Show toast for major milestones
               if (event.step === 'droplet') {
@@ -86,12 +89,14 @@ export function useDeploymentStream() {
                   description: event.message
                 })
               } else if (event.step === 'completed') {
+                deploymentsStore.updateLastStep('complete') // Mark final step complete
                 deploymentsStore.setComplete({
                   droplet_id: event.droplet_id,
                   ip_address: event.ip_address
                 })
-                toast.success('Deployment completed!', {
-                  description: event.message
+                toast.success('Infrastructure provisioning complete!', {
+                  description: `Server ready at ${event.ip_address}. Cloud-init provisioning may take 5-10 minutes.`,
+                  duration: 10000
                 })
                 // Refresh deployments list to show the final status
                 deploymentsStore.fetchDeployments()
