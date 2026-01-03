@@ -65,7 +65,7 @@ runcmd:
   # Configure Redis
   # ========================================================================
   - echo "Configuring Redis..."
-  - sed -i "s|^# requirepass .*|requirepass ${REDIS_PASSWORD}|" /etc/redis/redis.conf
+  - sed -i "s|^# requirepass .*|requirepass \${REDIS_PASSWORD}|" /etc/redis/redis.conf
   - sed -i 's/^bind .*/bind 127.0.0.1/' /etc/redis/redis.conf
   - systemctl enable redis-server
   - systemctl restart redis-server
@@ -81,9 +81,9 @@ runcmd:
   - systemctl enable rabbitmq-server
   - systemctl start rabbitmq-server
   - sleep 10
-  - rabbitmqctl add_user "${RABBITMQ_USERNAME}" "${RABBITMQ_PASSWORD}" || true
-  - rabbitmqctl set_user_tags "${RABBITMQ_USERNAME}" administrator
-  - rabbitmqctl set_permissions -p / "${RABBITMQ_USERNAME}" ".*" ".*" ".*"
+  - rabbitmqctl add_user "\${RABBITMQ_USERNAME}" "\${RABBITMQ_PASSWORD}" || true
+  - rabbitmqctl set_user_tags "\${RABBITMQ_USERNAME}" administrator
+  - rabbitmqctl set_permissions -p / "\${RABBITMQ_USERNAME}" ".*" ".*" ".*"
   - rabbitmq-plugins enable rabbitmq_management
   - echo "RabbitMQ configured with credentials"
 
