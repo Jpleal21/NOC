@@ -82,6 +82,7 @@ export class InfisicalService {
   private projectId: string;
   private accessToken: string | null = null;
   private tokenExpiresAt: number | null = null; // Unix timestamp in milliseconds
+  private authPromise: Promise<string> | null = null; // Promise cache to prevent race conditions
   private defaultTimeout = 30000; // 30 seconds default timeout
 
   constructor(auth: InfisicalAuth, projectId: string) {
@@ -129,6 +130,12 @@ export class InfisicalService {
       return this.accessToken;
     }
 
+    // If authentication is already in progress, return the existing promise (prevents race condition)
+    if (this.authPromise) {
+      console.log('[Infisical] Authentication already in progress, waiting for existing request...');
+      return this.authPromise;
+    }
+
     // Token expired or near expiration, get a new one
     if (this.accessToken) {
       console.log('[Infisical] Token expired or near expiration, refreshing...');
@@ -136,41 +143,51 @@ export class InfisicalService {
       this.tokenExpiresAt = null;
     }
 
-    const authUrl = `${this.baseUrl}/auth/universal-auth/login`;
-    console.log('[Infisical] Authenticating...');
-    console.log('[Infisical] Client ID length:', this.auth.clientId?.length || 0);
-    console.log('[Infisical] Client Secret length:', this.auth.clientSecret?.length || 0);
+    // Create and cache the authentication promise
+    this.authPromise = (async () => {
+      try {
+        const authUrl = `${this.baseUrl}/auth/universal-auth/login`;
+        console.log('[Infisical] Authenticating...');
+        console.log('[Infisical] Client ID length:', this.auth.clientId?.length || 0);
+        console.log('[Infisical] Client Secret length:', this.auth.clientSecret?.length || 0);
 
-    const response = await this.request(authUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        clientId: this.auth.clientId,
-        clientSecret: this.auth.clientSecret,
-      }),
-    });
+        const response = await this.request(authUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            clientId: this.auth.clientId,
+            clientSecret: this.auth.clientSecret,
+          }),
+        });
 
-    console.log('[Infisical] Auth response status:', response.status);
+        console.log('[Infisical] Auth response status:', response.status);
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[Infisical] Auth failed:', errorText);
-      throw new Error(`Infisical auth failed: ${response.status} - ${errorText}`);
-    }
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('[Infisical] Auth failed:', errorText);
+          throw new Error(`Infisical auth failed: ${response.status} - ${errorText}`);
+        }
 
-    const data = await response.json();
-    console.log('[Infisical] Auth successful, token received');
+        const data = await response.json();
+        console.log('[Infisical] Auth successful, token received');
 
-    // Cache token and calculate expiration
-    this.accessToken = data.accessToken;
+        // Cache token and calculate expiration
+        this.accessToken = data.accessToken;
 
-    // Infisical Universal Auth tokens typically have 7200s (2 hour) TTL
-    // If API provides expiresIn, use that; otherwise default to 1 hour for safety
-    const expiresInSeconds = data.expiresIn || 3600;
-    this.tokenExpiresAt = now + (expiresInSeconds * 1000);
+        // Infisical Universal Auth tokens typically have 7200s (2 hour) TTL
+        // If API provides expiresIn, use that; otherwise default to 1 hour for safety
+        const expiresInSeconds = data.expiresIn || 3600;
+        this.tokenExpiresAt = now + (expiresInSeconds * 1000);
 
-    console.log('[Infisical] Token expires in', expiresInSeconds, 'seconds');
-    return this.accessToken;
+        console.log('[Infisical] Token expires in', expiresInSeconds, 'seconds');
+        return this.accessToken;
+      } finally {
+        // Clear the promise cache once authentication completes (success or failure)
+        this.authPromise = null;
+      }
+    })();
+
+    return this.authPromise;
   }
 
   // Fetch secrets from Infisical with automatic token refresh on 401
@@ -217,6 +234,32 @@ export class InfisicalService {
       secrets[secret.secretKey] = secret.secretValue;
       console.log('[Infisical] Secret loaded:', secret.secretKey);
     });
+
+    // Validate critical secrets are present and non-empty
+    const requiredSecrets = [
+      'REDIS_PASSWORD',
+      'RABBITMQ_USERNAME',
+      'RABBITMQ_PASSWORD',
+      'MYSQL_PASSWORD',
+      'JWT_SECRET',
+      'ENCRYPTION_KEY',
+      'CLOUDFLARE_ORIGIN_CERT',
+      'CLOUDFLARE_ORIGIN_KEY',
+    ];
+
+    const missingSecrets: string[] = [];
+    for (const key of requiredSecrets) {
+      if (!secrets[key] || secrets[key].trim() === '') {
+        missingSecrets.push(key);
+      }
+    }
+
+    if (missingSecrets.length > 0) {
+      console.error('[Infisical] Missing or empty required secrets:', missingSecrets);
+      throw new Error(`Missing or empty required secrets in Infisical: ${missingSecrets.join(', ')}`);
+    }
+
+    console.log('[Infisical] All required secrets validated successfully');
 
     return {
       // Database Secrets - MySQL Main Data (5)

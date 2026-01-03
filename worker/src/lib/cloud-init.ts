@@ -65,9 +65,11 @@ runcmd:
   # Configure Redis
   # ========================================================================
   - echo "Configuring Redis..."
-  - REDIS_PASS="\${REDIS_PASSWORD}"
-  - sed -i "s/^# requirepass .*/requirepass $REDIS_PASS/" /etc/redis/redis.conf
-  - sed -i 's/^bind .*/bind 127.0.0.1/' /etc/redis/redis.conf
+  - |
+    # Use printf %q to safely escape password for sed command
+    REDIS_PASS_QUOTED=$(printf %q "\${REDIS_PASSWORD}")
+    sed -i "s|^# requirepass .*|requirepass $REDIS_PASS_QUOTED|" /etc/redis/redis.conf
+    sed -i 's/^bind .*/bind 127.0.0.1/' /etc/redis/redis.conf
   - systemctl enable redis-server
   - systemctl restart redis-server
   - echo "Redis configured with password from environment"
@@ -82,11 +84,13 @@ runcmd:
   - systemctl enable rabbitmq-server
   - systemctl start rabbitmq-server
   - sleep 10
-  - RABBITMQ_USERNAME="\${RABBITMQ_USERNAME}"
-  - RABBITMQ_PASS="\${RABBITMQ_PASSWORD}"
-  - rabbitmqctl add_user "$RABBITMQ_USERNAME" "$RABBITMQ_PASS" || true
-  - rabbitmqctl set_user_tags "$RABBITMQ_USERNAME" administrator
-  - rabbitmqctl set_permissions -p / "$RABBITMQ_USERNAME" ".*" ".*" ".*"
+  - |
+    # Use printf %q to safely escape credentials for shell commands
+    RABBITMQ_USER_QUOTED=$(printf %q "\${RABBITMQ_USERNAME}")
+    RABBITMQ_PASS_QUOTED=$(printf %q "\${RABBITMQ_PASSWORD}")
+    rabbitmqctl add_user $RABBITMQ_USER_QUOTED $RABBITMQ_PASS_QUOTED || true
+    rabbitmqctl set_user_tags $RABBITMQ_USER_QUOTED administrator
+    rabbitmqctl set_permissions -p / $RABBITMQ_USER_QUOTED ".*" ".*" ".*"
   - rabbitmq-plugins enable rabbitmq_management
   - echo "RabbitMQ configured with credentials from environment"
 

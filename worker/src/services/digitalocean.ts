@@ -268,9 +268,13 @@ export class DigitalOceanService {
         }
 
         console.warn('[DigitalOcean] Firewall rule not found after write, possible race condition. Retrying...');
-      } catch (error) {
+      } catch (error: any) {
         console.error('[DigitalOcean] Error updating firewall (attempt', attempt + 1, '):', error);
-        if (attempt === maxRetries - 1) throw error;
+        if (attempt === maxRetries - 1) {
+          // Add retry context to error message
+          const errorMessage = `Failed to add database trusted source after ${maxRetries} attempts: ${error.message || error}`;
+          throw new Error(errorMessage);
+        }
       }
 
       // Add jittered delay before retry to reduce collision probability

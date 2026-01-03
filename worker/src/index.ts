@@ -218,7 +218,7 @@ app.post('/api/deploy', async (c) => {
 
     console.log('[NOC Worker] All secrets fetched from Secret Store');
 
-    // Initialize services
+    // Initialize services (including db BEFORE stream to ensure scope)
     console.log('[NOC Worker] Initializing services...');
     const doService = new DigitalOceanService(doToken);
     const dnsService = new CloudflareDNSService(cfToken, cfZoneId);
@@ -226,10 +226,10 @@ app.post('/api/deploy', async (c) => {
       { clientId: infisicalClientId, clientSecret: infisicalClientSecret },
       infisicalProjectId
     );
-    const db = new DatabaseService(c.env.DB);
     console.log('[NOC Worker] Services initialized');
 
-    // Create deployment record
+    // Create deployment record OUTSIDE stream() callback to ensure db scope
+    const db = new DatabaseService(c.env.DB);
     console.log('[NOC Worker] Creating deployment record in database...');
     const deploymentId = await db.createDeployment({
       server_name,
@@ -586,10 +586,12 @@ app.post('/api/deploy/application', async (c) => {
       }
     );
 
+    // Always consume response body to prevent resource leaks
+    const responseText = await workflowResponse.text();
+
     if (!workflowResponse.ok) {
-      const errorText = await workflowResponse.text();
-      console.error('[NOC Worker] GitHub Actions trigger failed:', workflowResponse.status, errorText);
-      throw new Error(`GitHub Actions trigger failed: ${workflowResponse.status} - ${errorText}`);
+      console.error('[NOC Worker] GitHub Actions trigger failed:', workflowResponse.status, responseText);
+      throw new Error(`GitHub Actions trigger failed: ${workflowResponse.status} - ${responseText}`);
     }
 
     console.log('[NOC Worker] GitHub Actions workflow triggered successfully');
@@ -598,18 +600,30 @@ app.post('/api/deploy/application', async (c) => {
     // Wait a moment for the run to be created
     await new Promise(resolve => setTimeout(resolve, 2000));
 
-    // Get recent workflow runs to find ours
-    const runsResponse = await fetch(
-      'https://api.github.com/repos/RichardHorwath/FlaggerLink/actions/workflows/noc-deploy-application.yml/runs?per_page=1',
-      {
-        headers: {
-          'Authorization': `Bearer ${githubToken}`,
-          'Accept': 'application/vnd.github+json',
-          'User-Agent': 'NOC-Deployment-API',
-          'X-GitHub-Api-Version': '2022-11-28',
-        },
-      }
-    );
+    // Get recent workflow runs to find ours (with timeout)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
+    try {
+      var runsResponse = await fetch(
+        'https://api.github.com/repos/RichardHorwath/FlaggerLink/actions/workflows/noc-deploy-application.yml/runs?per_page=1',
+        {
+          headers: {
+            'Authorization': `Bearer ${githubToken}`,
+            'Accept': 'application/vnd.github+json',
+            'User-Agent': 'NOC-Deployment-API',
+            'X-GitHub-Api-Version': '2022-11-28',
+          },
+          signal: controller.signal,
+        }
+      );
+    } catch (fetchError: any) {
+      console.warn('[NOC Worker] Failed to fetch workflow run URL:', fetchError.message);
+      // Non-critical - workflow was triggered successfully, just couldn't get the URL
+      var runsResponse = { ok: false } as Response;
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     let workflowRunUrl = 'https://github.com/RichardHorwath/FlaggerLink/actions';
     if (runsResponse.ok) {
@@ -619,11 +633,16 @@ app.post('/api/deploy/application', async (c) => {
       }
     }
 
-    // Update deployment record with workflow URL
-    await db.updateDeployment(deploymentId, {
-      workflow_url: workflowRunUrl,
-    });
-    console.log('[NOC Worker] Deployment record updated with workflow URL');
+    // Update deployment record with workflow URL (don't fail deployment if DB update fails)
+    try {
+      await db.updateDeployment(deploymentId, {
+        workflow_url: workflowRunUrl,
+      });
+      console.log('[NOC Worker] Deployment record updated with workflow URL');
+    } catch (dbError: any) {
+      console.error('[NOC Worker] Warning: Failed to update deployment record with workflow URL:', dbError.message);
+      // Don't throw - workflow was successfully triggered, DB update is non-critical
+    }
 
     return c.json({
       success: true,
@@ -668,8 +687,27 @@ app.get('/api/deployments', async (c) => {
     const limitParam = c.req.query('limit');
     const offsetParam = c.req.query('offset');
 
-    const limit = limitParam ? Math.max(1, Math.min(parseInt(limitParam, 10) || 50, 1000)) : 50;
-    const offset = offsetParam ? Math.max(0, parseInt(offsetParam, 10) || 0) : 0;
+    // Validate limit parameter
+    let limit = 50; // default
+    if (limitParam) {
+      const parsedLimit = parseInt(limitParam, 10);
+      if (isNaN(parsedLimit)) {
+        console.error('[NOC Worker] Invalid limit parameter:', limitParam);
+        return c.json({ success: false, error: `Invalid limit parameter: '${limitParam}' is not a valid number` }, 400);
+      }
+      limit = Math.max(1, Math.min(parsedLimit, 1000));
+    }
+
+    // Validate offset parameter
+    let offset = 0; // default
+    if (offsetParam) {
+      const parsedOffset = parseInt(offsetParam, 10);
+      if (isNaN(parsedOffset)) {
+        console.error('[NOC Worker] Invalid offset parameter:', offsetParam);
+        return c.json({ success: false, error: `Invalid offset parameter: '${offsetParam}' is not a valid number` }, 400);
+      }
+      offset = Math.max(0, parsedOffset);
+    }
 
     const deployments = await db.getDeployments({
       server_name,
